@@ -3,10 +3,10 @@ from flask_cors import CORS
 from books import get_chapter_pages
 from highlight import save_highlight, remove_highlight
 from pyqs import get_pyq_matches
+import traceback  # For detailed error logs
 
-import traceback  # ✅ To capture full error logs
-
-app = Flask(__name__)
+# ✅ Configure static folder correctly for serving images
+app = Flask(__name__, static_url_path='/static', static_folder='static')
 CORS(app)  # Enable CORS for frontend communication
 
 @app.route('/api/load_chapter', methods=['POST'])
@@ -30,7 +30,7 @@ def load_chapter():
 
     except Exception as e:
         print("❌ Error in /api/load_chapter:")
-        print(traceback.format_exc())  # 🔥 Full traceback for deep debugging
+        print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/highlight', methods=['POST'])
