@@ -1,16 +1,20 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # ✅ IMPORT THIS
 from books import get_chapter_pages
 from highlight import save_highlight, remove_highlight
 from pyqs import get_pyq_matches
 
 app = Flask(__name__)
+CORS(app)  # ✅ ENABLE CORS FOR ALL ROUTES
 
 @app.route('/api/load_chapter', methods=['POST'])
 def load_chapter():
     data = request.json
+    print("📘 /api/load_chapter called with:", data)  # 🔍 Debug log
     book = data['book']
     chapter = data['chapter']
     pages = get_chapter_pages(book, chapter)
+    print("📄 Returning pages:", pages)  # 🔍 Debug log
     return jsonify({'pages': pages})
 
 @app.route('/api/highlight', methods=['POST'])
