@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from books import get_chapter_pages
 from highlight import save_highlight, remove_highlight
@@ -69,6 +69,12 @@ def pyq_match():
         print("❌ Error in pyq_match:")
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
+
+# ✅ Serve images explicitly in deployment (important for Render or platforms that don’t auto-serve)
+@app.route('/static/books/<book>/<chapter>/<filename>')
+def serve_static_image(book, chapter, filename):
+    print(f"📷 Serving image: {book}/{chapter}/{filename}")
+    return send_from_directory(f'static/books/{book}/{chapter}', filename)
 
 if __name__ == '__main__':
     print("🚀 Starting Flask app in debug mode...")
