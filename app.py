@@ -9,6 +9,7 @@ import traceback  # For detailed error logs
 app = Flask(__name__, static_url_path='/static', static_folder='static')
 CORS(app)  # Enable CORS for frontend communication
 
+
 @app.route('/api/load_chapter', methods=['POST'])
 def load_chapter():
     try:
@@ -33,6 +34,7 @@ def load_chapter():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/highlight', methods=['POST'])
 def highlight_line():
     try:
@@ -45,6 +47,7 @@ def highlight_line():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/remove_highlight', methods=['POST'])
 def unhighlight_line():
     try:
@@ -56,6 +59,7 @@ def unhighlight_line():
         print("❌ Error in unhighlight_line:")
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/pyq_match', methods=['POST'])
 def pyq_match():
@@ -70,11 +74,35 @@ def pyq_match():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Serve images explicitly in deployment (important for Render or platforms that don’t auto-serve)
+
+# ✅ NEW: Auto-highlighting endpoint
+@app.route('/api/auto_highlight', methods=['POST'])
+def auto_highlight():
+    try:
+        data = request.json
+        book = data.get('book')
+        chapter = data.get('chapter')
+
+        if not book or not chapter:
+            return jsonify({'error': 'Book and Chapter required'}), 400
+
+        from highlighter import auto_highlight_chapter  # ✅ Import logic
+        highlights = auto_highlight_chapter(book, chapter)
+
+        return jsonify({'message': 'Auto-highlighting done', 'highlights': highlights})
+
+    except Exception as e:
+        print("❌ Error in auto_highlight:")
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
+# ✅ Serve images explicitly in deployment (important for platforms like Render)
 @app.route('/static/books/<book>/<chapter>/<filename>')
 def serve_static_image(book, chapter, filename):
     print(f"📷 Serving image: {book}/{chapter}/{filename}")
     return send_from_directory(f'static/books/{book}/{chapter}', filename)
+
 
 if __name__ == '__main__':
     print("🚀 Starting Flask app in debug mode...")
