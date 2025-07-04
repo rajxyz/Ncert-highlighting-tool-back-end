@@ -1,35 +1,34 @@
-from flask import Flask, request, jsonify
-from books import get_chapter_pages
-from highlight import save_highlight, remove_highlight
-from pyqs import get_pyq_matches
+chapterSelect.addEventListener("change", function () {
+  const book = bookSelect.value;
+  const chapter = chapterSelect.value;
 
-app = Flask(__name__)
+  if (book !== "none" && chapter !== "none") {
+    fetch("https://ncert-highlighting-tool-back-end.onrender.com/api/load_chapter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ book, chapter })
+    })
+    .then(response => response.json())
+    .then(data => {
+      const contentArea = document.getElementById("content-area");
+      contentArea.innerHTML = "";
 
-@app.route('/api/load_chapter', methods=['POST'])
-def load_chapter():
-    data = request.json
-    book = data['book']
-    chapter = data['chapter']
-    pages = get_chapter_pages(book, chapter)
-    return jsonify({'pages': pages})
-
-@app.route('/api/highlight', methods=['POST'])
-def highlight_line():
-    data = request.json
-    save_highlight(data['book'], data['chapter'], data['line'])
-    return jsonify({'message': 'Highlight saved'})
-
-@app.route('/api/remove_highlight', methods=['POST'])
-def unhighlight_line():
-    data = request.json
-    remove_highlight(data['book'], data['chapter'], data['line'])
-    return jsonify({'message': 'Highlight removed'})
-
-@app.route('/api/pyq_match', methods=['POST'])
-def pyq_match():
-    data = request.json
-    matches = get_pyq_matches(data['chapter_text'])
-    return jsonify({'matches': matches})
-
-if __name__ == '__main__':
-    app.run(debug=True)
+      if (data.pages && data.pages.length > 0) {
+        data.pages.forEach(img => {
+          const imgElem = document.createElement("img");
+          imgElem.src = img;
+          imgElem.style.width = "100%";
+          imgElem.style.marginBottom = "20px";
+          contentArea.appendChild(imgElem);
+        });
+      } else {
+        contentArea.innerHTML = "<p>No images found for this chapter.</p>";
+      }
+    })
+    .catch(error => {
+      console.error("Error loading chapter:", error);
+      document.getElementById("content-area").innerHTML =
+        "<p>Error loading chapter content.</p>";
+    });
+  }
+});
