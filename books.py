@@ -1,6 +1,7 @@
 import os
 import json
 import traceback
+import urllib.parse  # ✅ required to encode URLs properly
 
 def get_chapter_pages(book, chapter):
     folder_path = f"static/books/{book}/{chapter}"
@@ -16,11 +17,15 @@ def get_chapter_pages(book, chapter):
         print(f"📁 Found {len(all_files)} files in folder.")
 
         for img_file in sorted(all_files):
-            if img_file.endswith('.png') or img_file.endswith('.jpg') or img_file.endswith('.jpeg'):
+            if img_file.endswith(('.png', '.jpg', '.jpeg')):
                 print(f"🖼️ Adding image file: {img_file}")
+                
+                # ✅ Encode spaces/special characters in URL
+                encoded_url = urllib.parse.quote(f"/static/books/{book}/{chapter}/{img_file}")
+
                 pages.append({
                     'page_number': img_file.split('.')[0],
-                    'image': f"/static/books/{book}/{chapter}/{img_file}"
+                    'image': encoded_url
                 })
 
         if not pages:
