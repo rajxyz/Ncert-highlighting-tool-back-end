@@ -1,6 +1,6 @@
 import re
 from pdf_parser import extract_text_from_chapter
-from pyqs import get_pyq_keywords
+from pyqs import get_pyq_matches
 
 # ✅ DEFAULT keyword-based pattern highlighter
 def highlight_by_keywords(book, chapter):
