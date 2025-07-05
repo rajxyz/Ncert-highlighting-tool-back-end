@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from books import get_chapter_pages
 from highlight import save_highlight, remove_highlight
-from pyqs import get_pyq_matches
+from pyqs import get_pyq_matches, get_pyq_keywords
 import traceback
 import os
 
@@ -76,28 +76,34 @@ def pyq_match():
         return jsonify({'error': str(e)}), 500
 
 
-# ✅ Auto-highlighting endpoint with FULL DEBUGGING
+# ✅ Auto-highlighting endpoint with mode support
 @app.route('/api/auto_highlight', methods=['POST'])
 def auto_highlight():
     try:
         data = request.json
         book = data.get('book')
         chapter = data.get('chapter')
+        mode = data.get('mode', 'default')  # "pyq" or "default"
 
         print("🔁 Auto-highlighting API called")
         print("📚 Book:", book)
         print("📖 Chapter:", chapter)
+        print("🎯 Highlight mode:", mode)
 
         if not book or not chapter:
             print("⚠️ Book or Chapter missing from request")
             return jsonify({'error': 'Book and Chapter required'}), 400
 
-        # Step-by-step debug: import logic
         print("🔍 Importing highlighter module...")
-        from highlighter import auto_highlight_chapter
+        from highlighter import highlight_by_keywords, highlight_by_pyqs
 
-        print("🚀 Running auto_highlight_chapter...")
-        highlights = auto_highlight_chapter(book, chapter)
+        if mode == 'pyq':
+            print("📌 Running PYQ-based highlighting")
+            pyq_list = get_pyq_keywords(book, chapter)
+            highlights = highlight_by_pyqs(book, chapter, pyq_list)
+        else:
+            print("🟡 Running keyword-based highlighting")
+            highlights = highlight_by_keywords(book, chapter)
 
         if not highlights:
             print("⚠️ No highlights returned.")
