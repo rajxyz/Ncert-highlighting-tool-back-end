@@ -3,9 +3,10 @@ from flask_cors import CORS
 from books import get_chapter_pages
 from highlight import save_highlight, remove_highlight
 from pyqs import get_pyq_matches
-import traceback  # For detailed error logs
+import traceback
+import os
 
-# ✅ Configure static folder correctly for serving images
+# ✅ Configure Flask App and Static Folder
 app = Flask(__name__, static_url_path='/static', static_folder='static')
 CORS(app)  # Enable CORS for frontend communication
 
@@ -75,7 +76,7 @@ def pyq_match():
         return jsonify({'error': str(e)}), 500
 
 
-# ✅ NEW: Auto-highlighting endpoint
+# ✅ Auto-highlighting endpoint with FULL DEBUGGING
 @app.route('/api/auto_highlight', methods=['POST'])
 def auto_highlight():
     try:
@@ -83,21 +84,36 @@ def auto_highlight():
         book = data.get('book')
         chapter = data.get('chapter')
 
+        print("🔁 Auto-highlighting API called")
+        print("📚 Book:", book)
+        print("📖 Chapter:", chapter)
+
         if not book or not chapter:
+            print("⚠️ Book or Chapter missing from request")
             return jsonify({'error': 'Book and Chapter required'}), 400
 
-        from highlighter import auto_highlight_chapter  # ✅ Import logic
+        # Step-by-step debug: import logic
+        print("🔍 Importing highlighter module...")
+        from highlighter import auto_highlight_chapter
+
+        print("🚀 Running auto_highlight_chapter...")
         highlights = auto_highlight_chapter(book, chapter)
+
+        if not highlights:
+            print("⚠️ No highlights returned.")
+        else:
+            print(f"✅ Total highlights found: {len(highlights)}")
+            for i, h in enumerate(highlights[:10], 1):
+                print(f"🔹 {i}: {h}")
 
         return jsonify({'message': 'Auto-highlighting done', 'highlights': highlights})
 
     except Exception as e:
-        print("❌ Error in auto_highlight:")
+        print("❌ Error in /api/auto_highlight:")
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 
-# ✅ Serve images explicitly in deployment (important for platforms like Render)
 @app.route('/static/books/<book>/<chapter>/<filename>')
 def serve_static_image(book, chapter, filename):
     print(f"📷 Serving image: {book}/{chapter}/{filename}")
