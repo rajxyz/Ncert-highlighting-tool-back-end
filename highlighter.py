@@ -1,41 +1,70 @@
-import os
-from ocr_engine import extract_text_from_image
-from matcher import match_lines
-import json
+import re
+from pdf_parser import extract_text_from_chapter
+from pyqs import get_pyq_keywords
 
-# Load highlightable keywords (e.g., dates, definitions, facts, etc.)
-with open("highlights_data.json", "r", encoding="utf-8") as f:
-    highlight_keywords = json.load(f)  # Expects dict: { "11th": { "Chapter 1": ["keyword1", "keyword2", ...] }, ... }
+def extract_highlights(text):
+    highlights = []
 
-def get_highlight_lines(book, chapter):
-    folder_path = os.path.join("static", "books", book, chapter)
-    print(f"📂 Scanning folder for OCR: {folder_path}")
-    
-    if not os.path.exists(folder_path):
-        return []
+    # Definitions
+    def_patterns = [
+        r'\b(is|are|was|means|refers to|is defined as)\b[^.]{10,100}\.',
+        r'\bcan be defined as\b[^.]{10,100}\.',
+    ]
+    for pattern in def_patterns:
+        highlights.extend(re.findall(pattern, text, flags=re.IGNORECASE))
 
-    lines = []
+    # Dates
+    date_pattern = r'\b(?:\d{1,2}[/-])?(?:\d{1,2}[/-])?\d{2,4}\b'
+    highlights.extend(re.findall(date_pattern, text))
 
-    # Read and OCR each image file in the folder
-    for file_name in sorted(os.listdir(folder_path)):
-        if file_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-            image_path = os.path.join(folder_path, file_name)
-            print(f"🖼️ OCR processing: {image_path}")
-            try:
-                text = extract_text_from_image(image_path)
-                lines.extend(text.splitlines())
-            except Exception as e:
-                print(f"❌ OCR failed on {file_name}: {e}")
+    # Numbers + Units
+    num_pattern = r'\b\d+(?:\.\d+)?\s?(?:kg|g|m|cm|km|s|ms|Hz|J|W|°C|%)\b'
+    highlights.extend(re.findall(num_pattern, text))
 
-    # Remove empty or whitespace-only lines
-    lines = [line.strip() for line in lines if line.strip()]
+    # Terminologies (Capitalized)
+    term_pattern = r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)?\b'
+    highlights.extend(re.findall(term_pattern, text))
 
-    # Get chapter-specific keywords
-    chapter_keywords = highlight_keywords.get(book, {}).get(chapter, [])
-    print(f"🧠 Matching {len(lines)} lines against {len(chapter_keywords)} keywords...")
+    # Examples
+    ex_pattern = r'(?:for example|e\.g\.|such as)\s[^.]{5,100}'
+    highlights.extend(re.findall(ex_pattern, text, flags=re.IGNORECASE))
 
-    # Find matching lines
-    matches = match_lines(lines, chapter_keywords)
-    print(f"✅ Found {len(matches)} highlighted lines.")
-    
-    return matches
+    # Steps/Processes
+    step_pattern = r'\b(Step \d+|Step-\d+|First,|Then,|Next,|Finally)\b[^.]{5,100}'
+    highlights.extend(re.findall(step_pattern, text, flags=re.IGNORECASE))
+
+    # Cause-Effect
+    cause_pattern = r'\b(Because|Due to|As a result|Therefore|Hence)\b[^.]{5,100}'
+    highlights.extend(re.findall(cause_pattern, text, flags=re.IGNORECASE))
+
+    # Theories, Laws
+    theory_pattern = r'\b(?:Law|Rule|Theory|Principle) of [A-Z][a-z]+\b'
+    highlights.extend(re.findall(theory_pattern, text))
+
+    # Acronyms
+    acronym_pattern = r'\b[A-Z]{2,}\b'
+    highlights.extend(re.findall(acronym_pattern, text))
+
+    # Lists (1. or - )
+    list_pattern = r'\n?\d+\.\s[^\n]+|\n?-\s[^\n]+'
+    highlights.extend(re.findall(list_pattern, text))
+
+    # Foreign-sounding words
+    foreign_pattern = r'\b[A-Za-z]+(?:us|um|ae|es|is|on)\b'
+    highlights.extend(re.findall(foreign_pattern, text))
+
+    # Previous Year Question Keywords
+    highlights.extend(get_pyq_keywords(text))
+
+    # Clean and deduplicate
+    cleaned = list(set(map(lambda x: x.strip().strip(','), highlights)))
+    return cleaned
+
+def auto_highlight_chapter(book, chapter):
+    print(f"🔍 Auto-highlighting: {book} - {chapter}")
+    text = extract_text_from_chapter(book, chapter)
+    print(f"📄 Extracted text length: {len(text)}")
+
+    highlighted = extract_highlights(text)
+    print(f"✨ Found {len(highlighted)} highlights.")
+    return highlighted
