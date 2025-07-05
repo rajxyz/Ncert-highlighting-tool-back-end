@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from books import get_chapter_pages
 from highlight import save_highlight, remove_highlight
-from pyqs import get_pyq_matches, get_pyq_keywords
+from pyqs import get_pyq_matches
 import traceback
 import os
 
