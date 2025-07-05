@@ -1,21 +1,4 @@
-import os
-from pdf2image import convert_from_path
-from ocr_engine import extract_text_from_image
-
-def convert_pdf_to_images(pdf_path, output_folder):
-    print(f"📄 Converting PDF to images: {pdf_path}")
-    pages = convert_from_path(pdf_path)
-    os.makedirs(output_folder, exist_ok=True)
-    
-    for i, page in enumerate(pages):
-        image_path = os.path.join(output_folder, f"page_{i+1}.png")
-        print(f"🖼️ Saving page {i+1} as image: {image_path}")
-        page.save(image_path, 'PNG')
-
-    print(f"✅ PDF conversion completed. Total pages: {len(pages)}")
-
-
-def extract_text_from_chapter(book, chapter):
+def extract_text_from_chapter(book, chapter, only_images=None):
     folder_path = os.path.join("static", "books", book, chapter)
     print(f"📂 Extracting text from folder: {folder_path}")
 
@@ -23,8 +6,14 @@ def extract_text_from_chapter(book, chapter):
         raise FileNotFoundError(f"❌ Folder not found: {folder_path}")
 
     text_chunks = []
-    files = sorted(os.listdir(folder_path))
-    print(f"📁 Found {len(files)} files")
+
+    # ✅ Use only selected images if provided
+    if only_images:
+        files = only_images
+        print(f"📁 Using {len(files)} selected images for OCR: {files}")
+    else:
+        files = sorted(os.listdir(folder_path))
+        print(f"📁 Found {len(files)} files in folder")
 
     for file in files:
         if file.lower().endswith(('.png', '.jpg', '.jpeg')):
