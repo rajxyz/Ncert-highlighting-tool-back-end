@@ -5,14 +5,25 @@ from highlight import save_highlight, remove_highlight
 from pyqs import get_pyq_matches
 import traceback
 import os
+from PIL import Image
+import pytesseract
+import time
 
 # ✅ Configure Flask App
 app = Flask(__name__, static_url_path='/static', static_folder='static')
 CORS(app)  # Enable CORS for frontend communication
 
-# ✅ Debug log
 print("✅ Flask app initialized")
 print("📦 Static folder:", app.static_folder)
+
+
+def downscale_image(image_path, max_width=1000):
+    image = Image.open(image_path)
+    if image.width > max_width:
+        ratio = max_width / image.width
+        new_size = (int(image.width * ratio), int(image.height * ratio))
+        image = image.resize(new_size, Image.ANTIALIAS)
+    return image
 
 
 @app.route('/api/load_chapter', methods=['POST'])
@@ -86,7 +97,7 @@ def auto_highlight():
         data = request.json
         book = data.get('book')
         chapter = data.get('chapter')
-        mode = data.get('mode', 'default')  # "pyq" or "default"
+        mode = data.get('mode', 'default')
 
         print("🔁 Auto-highlighting API called")
         print("📚 Book:", book)
@@ -97,15 +108,26 @@ def auto_highlight():
             print("⚠️ Missing book or chapter")
             return jsonify({'error': 'Book and Chapter required'}), 400
 
-        print("🔍 Importing highlighter...")
-        from highlighter import highlight_by_keywords, highlight_by_pyqs
+        folder_path = f"static/books/{book}/{chapter}"
+        image_files = sorted([f for f in os.listdir(folder_path) if f.endswith((".jpg", ".jpeg", ".png"))])
 
-        if mode == 'pyq':
-            print("📌 PYQ-based highlighting not implemented in this file")
-            highlights = []
-        else:
-            print("🟡 Running keyword-based highlighting")
-            highlights = highlight_by_keywords(book, chapter)
+        highlights = []
+
+        for filename in image_files:
+            full_path = os.path.join(folder_path, filename)
+            try:
+                print(f"🔍 OCR on image: {full_path}")
+                image = downscale_image(full_path)
+                text = pytesseract.image_to_string(image, lang='eng')
+
+                for line in text.splitlines():
+                    if any(keyword in line.lower() for keyword in ["definition", "example", "formula", "rule"]):
+                        highlights.append(line.strip())
+
+                time.sleep(0.5)  # Prevent memory overload
+
+            except Exception as img_err:
+                print(f"❌ Error processing {filename}: {img_err}")
 
         if not highlights:
             print("⚠️ No highlights returned.")
