@@ -6,9 +6,13 @@ from pyqs import get_pyq_matches
 import traceback
 import os
 
-# ✅ Configure Flask App and Static Folder
+# ✅ Configure Flask App
 app = Flask(__name__, static_url_path='/static', static_folder='static')
 CORS(app)  # Enable CORS for frontend communication
+
+# ✅ Debug log
+print("✅ Flask app initialized")
+print("📦 Static folder:", app.static_folder)
 
 
 @app.route('/api/load_chapter', methods=['POST'])
@@ -24,14 +28,14 @@ def load_chapter():
             print("⚠️ Missing book or chapter in request.")
             return jsonify({'error': 'Book and Chapter are required'}), 400
 
-        print(f"🔍 Trying to load pages from: Book={book}, Chapter={chapter}")
+        print(f"🔍 Loading pages for: Book={book}, Chapter={chapter}")
         pages = get_chapter_pages(book, chapter)
 
-        print(f"✅ Pages loaded successfully. Total pages: {len(pages)}")
+        print(f"✅ Pages loaded: {len(pages)}")
         return jsonify({'pages': pages})
 
     except Exception as e:
-        print("❌ Error in /api/load_chapter:")
+        print("❌ Exception in /api/load_chapter:")
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
@@ -40,7 +44,7 @@ def load_chapter():
 def highlight_line():
     try:
         data = request.json
-        print("🖍️ Highlight request:", data)
+        print("🖍️ Highlight request received:", data)
         save_highlight(data['book'], data['chapter'], data['line'])
         return jsonify({'message': 'Highlight saved'})
     except Exception as e:
@@ -53,7 +57,7 @@ def highlight_line():
 def unhighlight_line():
     try:
         data = request.json
-        print("❌ Unhighlight request:", data)
+        print("🧽 Unhighlight request received:", data)
         remove_highlight(data['book'], data['chapter'], data['line'])
         return jsonify({'message': 'Highlight removed'})
     except Exception as e:
@@ -76,7 +80,6 @@ def pyq_match():
         return jsonify({'error': str(e)}), 500
 
 
-# ✅ Auto-highlighting endpoint with mode support
 @app.route('/api/auto_highlight', methods=['POST'])
 def auto_highlight():
     try:
@@ -88,19 +91,18 @@ def auto_highlight():
         print("🔁 Auto-highlighting API called")
         print("📚 Book:", book)
         print("📖 Chapter:", chapter)
-        print("🎯 Highlight mode:", mode)
+        print("🎯 Mode:", mode)
 
         if not book or not chapter:
-            print("⚠️ Book or Chapter missing from request")
+            print("⚠️ Missing book or chapter")
             return jsonify({'error': 'Book and Chapter required'}), 400
 
-        print("🔍 Importing highlighter module...")
+        print("🔍 Importing highlighter...")
         from highlighter import highlight_by_keywords, highlight_by_pyqs
 
         if mode == 'pyq':
-            print("📌 Running PYQ-based highlighting")
-            pyq_list = get_pyq_keywords(book, chapter)
-            highlights = highlight_by_pyqs(book, chapter, pyq_list)
+            print("📌 PYQ-based highlighting not implemented in this file")
+            highlights = []
         else:
             print("🟡 Running keyword-based highlighting")
             highlights = highlight_by_keywords(book, chapter)
@@ -108,24 +110,31 @@ def auto_highlight():
         if not highlights:
             print("⚠️ No highlights returned.")
         else:
-            print(f"✅ Total highlights found: {len(highlights)}")
-            for i, h in enumerate(highlights[:10], 1):
-                print(f"🔹 {i}: {h}")
+            print(f"✅ Found {len(highlights)} highlights.")
+            for i, h in enumerate(highlights[:5]):
+                print(f"🔹 {i+1}: {h}")
 
-        return jsonify({'message': 'Auto-highlighting done', 'highlights': highlights})
+        return jsonify({'message': 'Auto-highlighting complete', 'highlights': highlights})
 
     except Exception as e:
-        print("❌ Error in /api/auto_highlight:")
+        print("❌ Error in auto_highlight:")
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 
 @app.route('/static/books/<book>/<chapter>/<filename>')
 def serve_static_image(book, chapter, filename):
-    print(f"📷 Serving image: {book}/{chapter}/{filename}")
-    return send_from_directory(f'static/books/{book}/{chapter}', filename)
+    try:
+        print(f"📷 Serving static image: {book}/{chapter}/{filename}")
+        return send_from_directory(f'static/books/{book}/{chapter}', filename)
+    except Exception as e:
+        print("❌ Error serving image:")
+        print(traceback.format_exc())
+        return "Error loading image", 500
 
 
+# ✅ Start the Flask app with dynamic port (for Render)
 if __name__ == '__main__':
-    print("🚀 Starting Flask app in debug mode...")
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))  # Render will set PORT
+    print(f"🚀 Starting Flask server on port {port}...")
+    app.run(host="0.0.0.0", port=port, debug=True)
