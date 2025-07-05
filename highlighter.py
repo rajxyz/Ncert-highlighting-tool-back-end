@@ -1,11 +1,30 @@
 import re
+import os
 from pdf_parser import extract_text_from_chapter
 from pyqs import get_pyq_matches
+
+MAX_IMAGES = 5  # ✅ Limit number of images to OCR
 
 # ✅ DEFAULT keyword-based pattern highlighter
 def highlight_by_keywords(book, chapter):
     print(f"🔍 Pattern-based highlighting: {book} - {chapter}")
-    text = extract_text_from_chapter(book, chapter)
+
+    # ✅ Limit images before extracting text
+    folder_path = f"static/books/{book}/{chapter}"
+    if not os.path.exists(folder_path):
+        print("❌ Chapter folder not found")
+        return []
+
+    all_images = sorted([
+        f for f in os.listdir(folder_path)
+        if f.lower().endswith(('.jpg', '.jpeg', '.png'))
+    ])
+    selected_images = all_images[:MAX_IMAGES]
+
+    print(f"🖼️ Limiting to {len(selected_images)} image(s): {selected_images}")
+
+    # ✅ Extract text only from selected images
+    text = extract_text_from_chapter(book, chapter, selected_images)
     print(f"📄 Extracted text length: {len(text)}")
 
     highlights = []
@@ -60,19 +79,4 @@ def highlight_by_keywords(book, chapter):
 
     cleaned = list(set(map(lambda x: x.strip().strip(','), highlights)))
     print(f"✨ Found {len(cleaned)} keyword-based highlights.")
-    return cleaned
-
-
-# ✅ PYQ-specific highlighter (only match from uploaded pyqs)
-def highlight_by_pyqs(book, chapter, pyq_keywords):
-    print(f"📘 PYQ-only highlighting for {book} - {chapter}")
-    text = extract_text_from_chapter(book, chapter)
-    matched = []
-
-    for keyword in pyq_keywords:
-        if keyword.lower() in text.lower():
-            matched.append(keyword)
-
-    cleaned = list(set(matched))
-    print(f"📌 Found {len(cleaned)} PYQ highlights.")
     return cleaned
