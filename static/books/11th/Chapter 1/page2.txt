@@ -1,37 +1,81 @@
-Born on 5 July 1904, in Kempten, Germany, ERNST MAYR, the
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ernst Mayr - NCERT Style</title>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 40px;
+      background: linear-gradient(to bottom, #ffffff 0%, #e6f0c8 100%);
+      font-family: 'Libre Baskerville', serif;
+      color: #000;
+      line-height: 1.6;
+      font-size: 16px;
+    }
 
-Harvard University evolutionary biologist who has been called
+    .container {
+      max-width: 750px;
+      margin: auto;
+    }
 
-‘The Darwin of the 20th century’, was one of the 100 greatest
+    .name {
+      font-weight: bold;
+      margin-top: 40px;
+      font-size: 17px;
+    }
 
-scientists of all time. Mayr joined Harvard’s Faculty of Arts
+    .dates {
+      font-size: 15px;
+      margin-bottom: 30px;
+    }
 
-and Sciences in 1953 and retired in 1975, assuming the title
+    .highlight {
+      font-variant: small-caps;
+      letter-spacing: 0.5px;
+    }
 
-Alexander Agassiz Professor of Zoology Emeritus. Throughout
+    em {
+      font-style: italic;
+    }
 
-his nearly 80-year career, his research spanned ornithology,
+    .footer {
+      text-align: center;
+      font-size: 14px;
+      margin-top: 80px;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <p>
+      Born on 5 July 1904, in Kempten, Germany,
+      <span class="highlight">Ernst Mayr</span>, the Harvard University evolutionary biologist
+      who has been called <em>‘The Darwin of the 20<sup>th</sup> century’</em>, was one of the 100 greatest
+      scientists of all time. Mayr joined Harvard’s Faculty of Arts and Sciences in 1953 and
+      retired in 1975, assuming the title <em>Alexander Agassiz Professor of Zoology Emeritus</em>.
+      Throughout his nearly 80-year career, his research spanned ornithology, taxonomy,
+      zoogeography, evolution, systematics, and the history and philosophy of biology.
+      He almost single-handedly made the origin of species diversity the central question
+      of evolutionary biology that it is today.
+    </p>
 
-taxonomy, zoogeography, evolution, systematics, and the
+    <p>
+      He also pioneered the currently accepted definition of a biological species.
+      Mayr was awarded the three prizes widely regarded as the <em>triple crown of biology</em>:
+      the <em>Balzan Prize</em> in 1983, the <em>International Prize for Biology</em> in 1994, and
+      the <em>Crafoord Prize</em> in 1999. Mayr died at the age of 100 in the year 2004.
+    </p>
 
-history and philosophy of biology. He almost single-handedly
+    <p class="name">Ernst Mayr</p>
+    <p class="dates">(1904 – 2004)</p>
 
-made the origin of species diversity the central question of
-
-evolutionary biology that it is today. He also pioneered the
-
-currently accepted definition of a biological species. Mayr was
-
-awarded the three prizes widely regarded as the triple crown of
-
-biology: the Balzan Prize in 1983, the International Prize for
-
-Biology in 1994, and the Crafoord Prize in 1999. Mayr died at
-
-the age of 100 in the year 2004.
-
-Ernst Mayr
-
-(1904 – 2004)
-
-Reprint 2025-26
+    <div class="footer">
+      Reprint 2025-26
+    </div>
+  </div>
+</body>
+</html>
