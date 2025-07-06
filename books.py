@@ -25,11 +25,8 @@ def get_chapter_pages(book, chapter):
                 print(f"   - Full path: {full_path}")
                 print(f"   - Exists: {file_exists}, Readable: {file_readable}")
 
-                if not file_exists:
-                    print(f"   ❌ File does not exist: {full_path}")
-                    continue
-                if not file_readable:
-                    print(f"   ❌ File is not readable: {full_path}")
+                if not file_exists or not file_readable:
+                    print(f"   ❌ File missing or unreadable: {full_path}")
                     continue
 
                 # Encode individual parts to avoid encoding slashes
@@ -38,12 +35,29 @@ def get_chapter_pages(book, chapter):
                 safe_img = urllib.parse.quote(img_file)
 
                 encoded_url = f"/static/books/{safe_book}/{safe_chapter}/{safe_img}"
-
                 print(f"   ✅ Encoded URL: {encoded_url}")
 
+                # 📝 Attempt to load corresponding .txt file
+                base_name = os.path.splitext(img_file)[0]  # 'page1' from 'page1.jpg'
+                txt_file = f"{base_name}.txt"
+                txt_path = os.path.join(folder_path, txt_file)
+
+                text = ""
+                if os.path.exists(txt_path):
+                    try:
+                        with open(txt_path, "r", encoding="utf-8") as f:
+                            text = f.read()
+                        print(f"📄 Loaded text from: {txt_file}")
+                    except Exception as e:
+                        print(f"⚠️ Could not read text file: {txt_file}")
+                        print(traceback.format_exc())
+                else:
+                    print(f"⚠️ No matching text file found for: {img_file}")
+
                 pages.append({
-                    'page_number': img_file.split('.')[0],
-                    'image': encoded_url
+                    'page_number': base_name,
+                    'image': encoded_url,
+                    'text': text
                 })
             else:
                 print(f"⚠️ Skipping non-image file: {img_file}")
