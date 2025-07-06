@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from books import get_chapter_pages
 from highlight import save_highlight, remove_highlight
 from pyqs import get_pyq_matches
 import traceback
@@ -14,7 +13,62 @@ CORS(app)
 print("✅ Flask app initialized")
 print("📦 Static folder:", app.static_folder)
 
-# ✅ Serve chapter text from pre-saved .txt file
+# ✅ Load chapter images + corresponding text files
+@app.route('/api/load_chapter', methods=['POST'])
+def load_chapter():
+    try:
+        data = request.json
+        book = data.get('book')
+        chapter = data.get('chapter')
+
+        print("📘 /api/load_chapter called with:", data)
+
+        if not book or not chapter:
+            return jsonify({'error': 'Book and Chapter are required'}), 400
+
+        folder_path = os.path.join("static", "books", book, chapter)
+        print(f"📂 Looking for folder: {folder_path}")
+
+        if not os.path.exists(folder_path):
+            return jsonify({'error': 'Chapter folder not found'}), 404
+
+        files = sorted(os.listdir(folder_path))
+        print(f"📁 Found {len(files)} files in folder: {files}")
+
+        pages = []
+
+        for file in files:
+            if file.lower().endswith(('.jpg', '.jpeg', '.png')):
+                image_url = f"/static/books/{book}/{chapter}/{file}"
+                base_name = os.path.splitext(file)[0]
+                text_path = os.path.join(folder_path, f"{base_name}.txt")
+                text_content = ""
+
+                if os.path.exists(text_path):
+                    try:
+                        with open(text_path, "r", encoding="utf-8") as f:
+                            text_content = f.read()
+                        print(f"📄 Loaded text: {base_name}.txt")
+                    except Exception as e:
+                        print(f"❌ Failed reading {base_name}.txt: {e}")
+
+                pages.append({
+                    "image": image_url,
+                    "text": text_content
+                })
+
+            else:
+                print(f"⚠️ Skipping non-image file: {file}")
+
+        print(f"✅ Pages loaded: {len(pages)}")
+        return jsonify({'pages': pages})
+
+    except Exception as e:
+        print("❌ Exception in /api/load_chapter:")
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+# ✅ Serve chapter text (entire chapter .txt)
 @app.route('/api/chapter_text/<book>/<chapter>')
 def get_chapter_text(book, chapter):
     try:
@@ -32,7 +86,7 @@ def get_chapter_text(book, chapter):
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Serve pre-generated highlights
+# ✅ Serve highlights for a chapter
 @app.route('/api/chapter_highlights/<book>/<chapter>')
 def get_chapter_highlights(book, chapter):
     try:
@@ -50,30 +104,7 @@ def get_chapter_highlights(book, chapter):
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Load chapter images metadata
-@app.route('/api/load_chapter', methods=['POST'])
-def load_chapter():
-    try:
-        data = request.json
-        book = data.get('book')
-        chapter = data.get('chapter')
-
-        print("📘 /api/load_chapter called with:", data)
-
-        if not book or not chapter:
-            return jsonify({'error': 'Book and Chapter are required'}), 400
-
-        pages = get_chapter_pages(book, chapter)
-        print(f"✅ Pages loaded: {len(pages)}")
-
-        return jsonify({'pages': pages})
-
-    except Exception as e:
-        print("❌ Exception in /api/load_chapter:")
-        print(traceback.format_exc())
-        return jsonify({'error': str(e)}), 500
-
-# ✅ Save highlight
+# ✅ Save a highlighted line
 @app.route('/api/highlight', methods=['POST'])
 def highlight_line():
     try:
@@ -88,7 +119,7 @@ def highlight_line():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Remove highlight
+# ✅ Remove a highlighted line
 @app.route('/api/remove_highlight', methods=['POST'])
 def unhighlight_line():
     try:
@@ -103,7 +134,7 @@ def unhighlight_line():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ PYQ Matching
+# ✅ PYQ Matching (on full chapter text)
 @app.route('/api/pyq_match', methods=['POST'])
 def pyq_match():
     try:
@@ -120,7 +151,7 @@ def pyq_match():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Serve static chapter image
+# ✅ Serve static image
 @app.route('/static/books/<book>/<chapter>/<filename>')
 def serve_static_image(book, chapter, filename):
     try:
@@ -132,7 +163,7 @@ def serve_static_image(book, chapter, filename):
         print(traceback.format_exc())
         return "Error loading image", 500
 
-# ✅ Run Flask app
+# ✅ Run Flask App
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     print(f"🚀 Starting Flask server on port {port}...")
