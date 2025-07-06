@@ -15,8 +15,13 @@ def save_data(data):
 
 def save_highlight(book, chapter, line):
     data = load_data()
-    data.setdefault(book, {}).setdefault(chapter, []).append(line)
-    save_data(data)
+    data.setdefault(book, {}).setdefault(chapter, [])
+    
+    if line not in data[book][chapter]:  # Prevent duplicates
+        data[book][chapter].append(line)
+        save_data(data)
+    else:
+        print(f"ℹ️ Line already highlighted: {line}")
 
 def remove_highlight(book, chapter, line):
     data = load_data()
@@ -24,3 +29,7 @@ def remove_highlight(book, chapter, line):
         if line in data[book][chapter]:
             data[book][chapter].remove(line)
             save_data(data)
+
+def get_highlights(book, chapter):
+    data = load_data()
+    return data.get(book, {}).get(chapter, [])
