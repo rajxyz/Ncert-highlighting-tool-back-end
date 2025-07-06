@@ -2,6 +2,12 @@ from PIL import Image
 import pytesseract
 import os
 
+# ✅ Handle Pillow 10.0+ deprecation of Image.ANTIALIAS
+try:
+    RESAMPLE = Image.Resampling.LANCZOS  # PIL >= 10.0
+except AttributeError:
+    RESAMPLE = Image.ANTIALIAS  # PIL < 10.0
+
 def extract_text_from_image(image_path, lang='eng'):
     """
     Extracts text from an image using Tesseract OCR with enhanced logging and error handling.
@@ -22,6 +28,9 @@ def extract_text_from_image(image_path, lang='eng'):
             return ""
 
         image = Image.open(image_path)
+
+        # Optional: Resize image if needed (uncomment below if required)
+        # image = image.resize((image.width * 2, image.height * 2), RESAMPLE)
 
         print(f"📐 Image size: {image.size}")
         print(f"🔤 OCR language: {lang}")
