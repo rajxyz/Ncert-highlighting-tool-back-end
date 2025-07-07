@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from highlight import save_highlight, remove_highlight
+from highlight import save_highlight, remove_highlight, get_highlights
 from pyqs import get_pyq_matches
 import traceback
 import os
@@ -30,6 +30,7 @@ def load_chapter():
         print(f"📂 Looking for folder: {folder_path}")
 
         if not os.path.exists(folder_path):
+            print("❌ Folder not found.")
             return jsonify({'error': 'Chapter folder not found'}), 404
 
         files = sorted(os.listdir(folder_path))
@@ -56,7 +57,6 @@ def load_chapter():
                     "image": image_url,
                     "text": text_content
                 })
-
             else:
                 print(f"⚠️ Skipping non-image file: {file}")
 
@@ -79,6 +79,7 @@ def get_chapter_text(book, chapter):
             with open(path, "r", encoding="utf-8") as f:
                 return jsonify({"text": f.read()})
 
+        print("❌ Text file not found")
         return jsonify({"error": "Text file not found"}), 404
 
     except Exception as e:
@@ -86,32 +87,36 @@ def get_chapter_text(book, chapter):
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Serve highlights for a chapter
+# ✅ Serve category-based highlights
 @app.route('/api/chapter_highlights/<book>/<chapter>')
 def get_chapter_highlights(book, chapter):
     try:
-        path = f"static/highlights/{book}/{chapter}.json"
-        print(f"📌 Reading highlight JSON: {path}")
-
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                return jsonify({"highlights": json.load(f)})
-
-        return jsonify({"error": "Highlights not found"}), 404
-
+        print(f"📌 Fetching highlights for: Book={book}, Chapter={chapter}")
+        highlights = get_highlights(book, chapter)
+        print(f"📋 Total highlights: {len(highlights)}")
+        return jsonify({"highlights": highlights})
     except Exception as e:
         print("❌ Error in /api/chapter_highlights:")
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Save a highlighted line
+# ✅ Save a highlight with category
 @app.route('/api/highlight', methods=['POST'])
 def highlight_line():
     try:
         data = request.json
         print("🖍️ Highlight request:", data)
 
-        save_highlight(data['book'], data['chapter'], data['line'])
+        book = data.get('book')
+        chapter = data.get('chapter')
+        text = data.get('text')
+        category = data.get('category')
+
+        if not all([book, chapter, text, category]):
+            print("❗ Missing required fields")
+            return jsonify({'error': 'Missing book, chapter, text or category'}), 400
+
+        save_highlight(book, chapter, text, category)
         return jsonify({'message': 'Highlight saved'})
 
     except Exception as e:
@@ -119,14 +124,23 @@ def highlight_line():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Remove a highlighted line
+# ✅ Remove a highlight with category
 @app.route('/api/remove_highlight', methods=['POST'])
 def unhighlight_line():
     try:
         data = request.json
         print("🧽 Unhighlight request:", data)
 
-        remove_highlight(data['book'], data['chapter'], data['line'])
+        book = data.get('book')
+        chapter = data.get('chapter')
+        text = data.get('text')
+        category = data.get('category')
+
+        if not all([book, chapter, text, category]):
+            print("❗ Missing required fields for removal")
+            return jsonify({'error': 'Missing book, chapter, text or category'}), 400
+
+        remove_highlight(book, chapter, text, category)
         return jsonify({'message': 'Highlight removed'})
 
     except Exception as e:
@@ -168,3 +182,5 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     print(f"🚀 Starting Flask server on port {port}...")
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
