@@ -4,7 +4,6 @@ from highlight import save_highlight, remove_highlight, get_highlights
 from pyqs import get_pyq_matches
 import traceback
 import os
-import json
 
 # ✅ Initialize Flask
 app = Flask(__name__, static_url_path='/static', static_folder='static')
@@ -173,14 +172,26 @@ def serve_static_image(book, chapter, filename):
     try:
         print(f"📷 Serving image: {book}/{chapter}/{filename}")
         return send_from_directory(f'static/books/{book}/{chapter}', filename)
-
     except Exception as e:
         print("❌ Error in serve_static_image:")
         print(traceback.format_exc())
         return "Error loading image", 500
+
+# ✅ CORS fix (required by browsers)
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
+    return response
 
 # ✅ Run Flask App
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     print(f"🚀 Starting Flask server on port {port}...")
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
+
+
+
