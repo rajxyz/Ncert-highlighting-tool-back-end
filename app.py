@@ -8,7 +8,9 @@ import json
 
 # ✅ Initialize Flask
 app = Flask(__name__, static_url_path='/static', static_folder='static')
-CORS(app)
+
+# ✅ Enable CORS properly for all API routes
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 print("✅ Flask app initialized")
 print("📦 Static folder:", app.static_folder)
@@ -182,5 +184,3 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     print(f"🚀 Starting Flask server on port {port}...")
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
