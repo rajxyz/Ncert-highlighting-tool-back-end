@@ -4,11 +4,10 @@ from highlight import save_highlight, remove_highlight, get_highlights
 from pyqs import get_pyq_matches
 import traceback
 import os
+import json
 
 # ✅ Initialize Flask
 app = Flask(__name__, static_url_path='/static', static_folder='static')
-
-# ✅ Enable CORS properly for all API routes
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 print("✅ Flask app initialized")
@@ -101,7 +100,7 @@ def get_chapter_highlights(book, chapter):
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Save a highlight with category
+# ✅ Save a single highlight
 @app.route('/api/highlight', methods=['POST'])
 def highlight_line():
     try:
@@ -125,7 +124,7 @@ def highlight_line():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Remove a highlight with category
+# ✅ Remove a highlight
 @app.route('/api/remove_highlight', methods=['POST'])
 def unhighlight_line():
     try:
@@ -149,7 +148,7 @@ def unhighlight_line():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ PYQ Matching (on full chapter text)
+# ✅ PYQ Matching
 @app.route('/api/pyq_match', methods=['POST'])
 def pyq_match():
     try:
@@ -166,6 +165,33 @@ def pyq_match():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
+# ✅ Save all highlights (NEW!)
+@app.route('/api/save_highlights', methods=['POST'])
+def save_all_highlights():
+    try:
+        data = request.json
+        book = data.get('book')
+        chapter = data.get('chapter')
+        highlights = data.get('highlights', [])
+
+        print(f"💾 Saving all highlights for {book} - {chapter}")
+        print(f"📋 Highlights count: {len(highlights)}")
+
+        folder_path = os.path.join("static", "highlights", book)
+        os.makedirs(folder_path, exist_ok=True)
+
+        save_path = os.path.join(folder_path, f"{chapter}.json")
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(highlights, f, ensure_ascii=False, indent=2)
+
+        print(f"✅ Highlights saved at: {save_path}")
+        return jsonify({"message": "Highlights saved successfully"})
+
+    except Exception as e:
+        print("❌ Error in /api/save_highlights:")
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
 # ✅ Serve static image
 @app.route('/static/books/<book>/<chapter>/<filename>')
 def serve_static_image(book, chapter, filename):
@@ -177,7 +203,7 @@ def serve_static_image(book, chapter, filename):
         print(traceback.format_exc())
         return "Error loading image", 500
 
-# ✅ CORS fix (required by browsers)
+# ✅ CORS headers for all responses
 @app.after_request
 def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
@@ -185,11 +211,24 @@ def add_cors_headers(response):
     response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
     return response
 
-# ✅ Run Flask App
+# ✅ Run Flask app
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     print(f"🚀 Starting Flask server on port {port}...")
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
