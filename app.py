@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from highlight import save_highlight, remove_highlight, get_highlights
 from pyqs import get_pyq_matches
-from highlighter import get_matches_by_category
 import traceback
 import os
 import json
