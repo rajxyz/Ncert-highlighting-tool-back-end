@@ -2,13 +2,14 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from highlight import save_highlight, remove_highlight, get_highlights
 from pyqs import get_pyq_matches
+from highlighter import get_matches_by_category
 import traceback
 import os
 import json
 
 # ✅ Initialize Flask
 app = Flask(__name__, static_url_path='/static', static_folder='static')
-CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+CORS(app, resources={r"/api/": {"origins": ""}}, supports_credentials=True)
 
 print("✅ Flask app initialized")
 print("📦 Static folder:", app.static_folder)
@@ -20,7 +21,6 @@ def load_chapter():
         data = request.json
         book = data.get('book')
         chapter = data.get('chapter')
-
         print("📘 /api/load_chapter called with:", data)
 
         if not book or not chapter:
@@ -37,7 +37,6 @@ def load_chapter():
         print(f"📁 Found {len(files)} files in folder: {files}")
 
         pages = []
-
         for file in files:
             if file.lower().endswith(('.jpg', '.jpeg', '.png')):
                 image_url = f"/static/books/{book}/{chapter}/{file}"
@@ -62,13 +61,12 @@ def load_chapter():
 
         print(f"✅ Pages loaded: {len(pages)}")
         return jsonify({'pages': pages})
-
     except Exception as e:
         print("❌ Exception in /api/load_chapter:")
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Serve chapter text (entire chapter .txt)
+# ✅ Serve chapter text
 @app.route('/api/chapter_text/<book>/<chapter>')
 def get_chapter_text(book, chapter):
     try:
@@ -81,7 +79,6 @@ def get_chapter_text(book, chapter):
 
         print("❌ Text file not found")
         return jsonify({"error": "Text file not found"}), 404
-
     except Exception as e:
         print("❌ Error in /api/chapter_text:")
         print(traceback.format_exc())
@@ -118,7 +115,6 @@ def highlight_line():
 
         save_highlight(book, chapter, text, category)
         return jsonify({'message': 'Highlight saved'})
-
     except Exception as e:
         print("❌ Error in /api/highlight:")
         print(traceback.format_exc())
@@ -142,7 +138,6 @@ def unhighlight_line():
 
         remove_highlight(book, chapter, text, category)
         return jsonify({'message': 'Highlight removed'})
-
     except Exception as e:
         print("❌ Error in /api/remove_highlight:")
         print(traceback.format_exc())
@@ -159,13 +154,12 @@ def pyq_match():
         print(f"📌 PYQ Matches: {len(matches)}")
 
         return jsonify({'matches': matches})
-
     except Exception as e:
         print("❌ Error in /api/pyq_match:")
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Save all highlights (NEW!)
+# ✅ Save all highlights (bulk)
 @app.route('/api/save_highlights', methods=['POST'])
 def save_all_highlights():
     try:
@@ -186,11 +180,36 @@ def save_all_highlights():
 
         print(f"✅ Highlights saved at: {save_path}")
         return jsonify({"message": "Highlights saved successfully"})
-
     except Exception as e:
         print("❌ Error in /api/save_highlights:")
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
+
+# ✅ Custom Highlighting (New Route)
+@app.route('/api/custom_highlight', methods=['POST'])
+def custom_highlight():
+    try:
+        data = request.json
+        book = data.get("book")
+        chapter = data.get("chapter")
+        category = data.get("category")
+
+        print(f"🎯 Custom highlight for → Book: {book}, Chapter: {chapter}, Category: {category}")
+
+        if not all([book, chapter, category]):
+            return jsonify({"error": "Missing book, chapter, or category"}), 400
+
+        matches = get_matches_by_category(book, chapter, category)
+        print(f"✅ Found {len(matches)} matches for category '{category}'")
+
+        for match in matches:
+            save_highlight(book, chapter, match, category)
+
+        return jsonify({"matches": matches, "message": "Highlights added for category"})
+    except Exception as e:
+        print("❌ Error in /api/custom_highlight:")
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 # ✅ Serve static image
 @app.route('/static/books/<book>/<chapter>/<filename>')
@@ -203,7 +222,7 @@ def serve_static_image(book, chapter, filename):
         print(traceback.format_exc())
         return "Error loading image", 500
 
-# ✅ CORS headers for all responses
+# ✅ CORS headers
 @app.after_request
 def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
@@ -211,26 +230,8 @@ def add_cors_headers(response):
     response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
     return response
 
-# ✅ Run Flask app
+# ✅ Run app
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     print(f"🚀 Starting Flask server on port {port}...")
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
