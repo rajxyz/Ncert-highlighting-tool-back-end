@@ -83,7 +83,7 @@ def get_chapter_text(book, chapter):
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Serve category-based highlights
+# ✅ Serve chapter highlights
 @app.route('/api/chapter_highlights/<book>/<chapter>')
 def get_chapter_highlights(book, chapter):
     try:
@@ -96,7 +96,7 @@ def get_chapter_highlights(book, chapter):
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Save a single highlight
+# ✅ Save a single highlight (Updated: returns highlights)
 @app.route('/api/highlight', methods=['POST'])
 def highlight_line():
     try:
@@ -113,7 +113,14 @@ def highlight_line():
             return jsonify({'error': 'Missing book, chapter, text or category'}), 400
 
         save_highlight(book, chapter, text, category)
-        return jsonify({'message': 'Highlight saved'})
+
+        # ✅ Return updated highlights so frontend can apply
+        highlights = get_highlights(book, chapter)
+
+        return jsonify({
+            'message': 'Highlight saved',
+            'highlights': highlights
+        })
     except Exception as e:
         print("❌ Error in /api/highlight:")
         print(traceback.format_exc())
@@ -158,7 +165,7 @@ def pyq_match():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Save all highlights (bulk)
+# ✅ Save all highlights
 @app.route('/api/save_highlights', methods=['POST'])
 def save_all_highlights():
     try:
@@ -184,7 +191,7 @@ def save_all_highlights():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Custom Highlighting (New Route)
+# ✅ Custom highlight category
 @app.route('/api/custom_highlight', methods=['POST'])
 def custom_highlight():
     try:
@@ -210,7 +217,7 @@ def custom_highlight():
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
-# ✅ Serve static image
+# ✅ Serve image
 @app.route('/static/books/<book>/<chapter>/<filename>')
 def serve_static_image(book, chapter, filename):
     try:
@@ -229,7 +236,7 @@ def add_cors_headers(response):
     response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
     return response
 
-# ✅ Run app
+# ✅ Start server
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     print(f"🚀 Starting Flask server on port {port}...")
