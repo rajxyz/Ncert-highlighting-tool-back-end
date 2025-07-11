@@ -1,64 +1,68 @@
 import json
 import os
 
-DATA_FILE = 'highlights_data.json'
+# 🔧 Dynamic path per chapter
+def get_chapter_file_path(book, chapter):
+    folder_path = os.path.join("static", "highlights", book)
+    os.makedirs(folder_path, exist_ok=True)
+    return os.path.join(folder_path, f"{chapter}.json")
 
-def load_data():
-    print("📥 Loading data from file...")
-    if os.path.exists(DATA_FILE):
+# 📥 Load highlights for a specific chapter
+def load_data(book, chapter):
+    path = get_chapter_file_path(book, chapter)
+    print(f"📥 Loading highlights from: {path}")
+    if os.path.exists(path):
         try:
-            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+            with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                print(f"✅ Data loaded successfully: {len(data)} books found")
+                print(f"✅ Loaded {len(data)} highlights.")
                 return data
         except Exception as e:
-            print(f"❌ Error loading JSON: {e}")
-            return {}
-    print("⚠️ No data file found, returning empty structure.")
-    return {}
+            print(f"❌ Error loading highlights: {e}")
+            return []
+    else:
+        print("⚠️ File not found, returning empty list.")
+        return []
 
-def save_data(data):
+# 💾 Save highlights to file
+def save_data(book, chapter, highlights):
+    path = get_chapter_file_path(book, chapter)
     try:
-        with open(DATA_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-            print("💾 Data saved successfully.")
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(highlights, f, indent=2, ensure_ascii=False)
+            print(f"💾 Saved {len(highlights)} highlights to {path}")
     except Exception as e:
-        print(f"❌ Error saving data: {e}")
+        print(f"❌ Error saving highlights: {e}")
 
+# 🖍️ Save a single highlight
 def save_highlight(book, chapter, text, category):
-    print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Category: {category}, Text: {text}")
+    print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Category: {category}")
+    highlights = load_data(book, chapter)
+    entry = {"text": text.strip(), "category": category.strip()}
 
-    data = load_data()
-    data.setdefault(book, {}).setdefault(chapter, [])
-
-    entry = {"text": text, "category": category}
-
-    if entry not in data[book][chapter]:
-        data[book][chapter].append(entry)
-        print(f"✅ Highlight added: {entry}")
-        save_data(data)
+    if entry not in highlights:
+        highlights.append(entry)
+        save_data(book, chapter, highlights)
+        print("✅ Highlight added.")
     else:
-        print(f"ℹ️ Highlight already exists, skipping: {entry}")
+        print("ℹ️ Highlight already exists, skipping.")
 
+# 🧽 Remove a highlight
 def remove_highlight(book, chapter, text, category):
-    print(f"\n🧽 Removing highlight → Book: {book}, Chapter: {chapter}, Category: {category}, Text: {text}")
+    print(f"\n🧽 Removing highlight → Book: {book}, Chapter: {chapter}, Category: {category}")
+    highlights = load_data(book, chapter)
+    entry = {"text": text.strip(), "category": category.strip()}
 
-    data = load_data()
-    entry = {"text": text, "category": category}
-
-    if book in data and chapter in data[book]:
-        if entry in data[book][chapter]:
-            data[book][chapter].remove(entry)
-            print("✅ Highlight removed.")
-            save_data(data)
-        else:
-            print("⚠️ Highlight entry not found in chapter list.")
+    if entry in highlights:
+        highlights.remove(entry)
+        save_data(book, chapter, highlights)
+        print("✅ Highlight removed.")
     else:
-        print("⚠️ Book or chapter not found in existing data.")
+        print("⚠️ Highlight not found, skipping.")
 
+# 📌 Get all highlights for a chapter
 def get_highlights(book, chapter):
     print(f"\n📌 Fetching highlights → Book: {book}, Chapter: {chapter}")
-    data = load_data()
-    highlights = data.get(book, {}).get(chapter, [])
+    highlights = load_data(book, chapter)
     print(f"📦 Found {len(highlights)} highlights.")
     return highlights
