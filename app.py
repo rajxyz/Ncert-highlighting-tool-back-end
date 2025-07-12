@@ -6,14 +6,13 @@ import traceback
 import os
 import json
 
-# ✅ Initialize Flask
 app = Flask(__name__, static_url_path='/static', static_folder='static')
 CORS(app, resources={r"/api/": {"origins": ""}}, supports_credentials=True)
 
 print("✅ Flask app initialized")
 print("📦 Static folder:", app.static_folder)
 
-# ✅ Load chapter images + corresponding text files
+# Load chapter images and text
 @app.route('/api/load_chapter', methods=['POST'])
 def load_chapter():
     try:
@@ -65,7 +64,7 @@ def load_chapter():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Serve chapter text
+# Chapter text
 @app.route('/api/chapter_text/<book>/<chapter>')
 def get_chapter_text(book, chapter):
     try:
@@ -83,7 +82,7 @@ def get_chapter_text(book, chapter):
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Serve chapter highlights
+# Highlights
 @app.route('/api/chapter_highlights/<book>/<chapter>')
 def get_chapter_highlights(book, chapter):
     try:
@@ -96,7 +95,7 @@ def get_chapter_highlights(book, chapter):
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Save a single highlight (Updated: returns highlights)
+# ✅ Save single highlight (updated for exact word-level)
 @app.route('/api/highlight', methods=['POST'])
 def highlight_line():
     try:
@@ -105,16 +104,15 @@ def highlight_line():
 
         book = data.get('book')
         chapter = data.get('chapter')
-        text = data.get('text')
+        full_text = data.get('full_text')
+        highlighted_text = data.get('highlighted_text')
         category = data.get('category')
 
-        if not all([book, chapter, text, category]):
-            print("❗ Missing required fields")
-            return jsonify({'error': 'Missing book, chapter, text or category'}), 400
+        if not all([book, chapter, full_text, highlighted_text, category]):
+            return jsonify({'error': 'Missing book, chapter, full_text, highlighted_text or category'}), 400
 
-        save_highlight(book, chapter, text, category)
+        save_highlight(book, chapter, full_text, highlighted_text, category)
 
-        # ✅ Return updated highlights so frontend can apply
         highlights = get_highlights(book, chapter)
 
         return jsonify({
@@ -126,7 +124,7 @@ def highlight_line():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Remove a highlight
+# ✅ Remove a single highlight (word-level)
 @app.route('/api/remove_highlight', methods=['POST'])
 def unhighlight_line():
     try:
@@ -135,14 +133,14 @@ def unhighlight_line():
 
         book = data.get('book')
         chapter = data.get('chapter')
-        text = data.get('text')
+        full_text = data.get('full_text')
+        highlighted_text = data.get('highlighted_text')
         category = data.get('category')
 
-        if not all([book, chapter, text, category]):
-            print("❗ Missing required fields for removal")
-            return jsonify({'error': 'Missing book, chapter, text or category'}), 400
+        if not all([book, chapter, full_text, highlighted_text, category]):
+            return jsonify({'error': 'Missing book, chapter, full_text, highlighted_text or category'}), 400
 
-        remove_highlight(book, chapter, text, category)
+        remove_highlight(book, chapter, full_text, highlighted_text, category)
         return jsonify({'message': 'Highlight removed'})
     except Exception as e:
         print("❌ Error in /api/remove_highlight:")
@@ -165,7 +163,7 @@ def pyq_match():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Save all highlights
+# ✅ Save all highlights (bulk)
 @app.route('/api/save_highlights', methods=['POST'])
 def save_all_highlights():
     try:
@@ -191,33 +189,7 @@ def save_all_highlights():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Custom highlight category
-@app.route('/api/custom_highlight', methods=['POST'])
-def custom_highlight():
-    try:
-        data = request.json
-        book = data.get("book")
-        chapter = data.get("chapter")
-        category = data.get("category")
-
-        print(f"🎯 Custom highlight for → Book: {book}, Chapter: {chapter}, Category: {category}")
-
-        if not all([book, chapter, category]):
-            return jsonify({"error": "Missing book, chapter, or category"}), 400
-
-        matches = get_matches_by_category(book, chapter, category)
-        print(f"✅ Found {len(matches)} matches for category '{category}'")
-
-        for match in matches:
-            save_highlight(book, chapter, match, category)
-
-        return jsonify({"matches": matches, "message": "Highlights added for category"})
-    except Exception as e:
-        print("❌ Error in /api/custom_highlight:")
-        print(traceback.format_exc())
-        return jsonify({"error": str(e)}), 500
-
-# ✅ Serve image
+# ✅ Serve images
 @app.route('/static/books/<book>/<chapter>/<filename>')
 def serve_static_image(book, chapter, filename):
     try:
