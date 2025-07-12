@@ -7,6 +7,7 @@ def get_chapter_file_path(book, chapter):
     os.makedirs(folder_path, exist_ok=True)
     return os.path.join(folder_path, f"{chapter}.json")
 
+
 # 📥 Load highlights for a specific chapter
 def load_data(book, chapter):
     path = get_chapter_file_path(book, chapter)
@@ -24,6 +25,7 @@ def load_data(book, chapter):
         print("⚠️ File not found, returning empty list.")
         return []
 
+
 # 💾 Save highlights to file
 def save_data(book, chapter, highlights):
     path = get_chapter_file_path(book, chapter)
@@ -34,11 +36,16 @@ def save_data(book, chapter, highlights):
     except Exception as e:
         print(f"❌ Error saving highlights: {e}")
 
-# 🖍️ Save a single highlight
-def save_highlight(book, chapter, text, category):
+
+# 🖍️ Save a single highlight (word-level)
+def save_highlight(book, chapter, full_text, highlighted_text, category):
     print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Category: {category}")
     highlights = load_data(book, chapter)
-    entry = {"text": text.strip(), "category": category.strip()}
+    entry = {
+        "full_text": full_text.strip(),
+        "highlighted_text": highlighted_text.strip(),
+        "category": category.strip()
+    }
 
     if entry not in highlights:
         highlights.append(entry)
@@ -47,11 +54,16 @@ def save_highlight(book, chapter, text, category):
     else:
         print("ℹ️ Highlight already exists, skipping.")
 
+
 # 🧽 Remove a highlight
-def remove_highlight(book, chapter, text, category):
+def remove_highlight(book, chapter, full_text, highlighted_text, category):
     print(f"\n🧽 Removing highlight → Book: {book}, Chapter: {chapter}, Category: {category}")
     highlights = load_data(book, chapter)
-    entry = {"text": text.strip(), "category": category.strip()}
+    entry = {
+        "full_text": full_text.strip(),
+        "highlighted_text": highlighted_text.strip(),
+        "category": category.strip()
+    }
 
     if entry in highlights:
         highlights.remove(entry)
@@ -59,6 +71,7 @@ def remove_highlight(book, chapter, text, category):
         print("✅ Highlight removed.")
     else:
         print("⚠️ Highlight not found, skipping.")
+
 
 # 📌 Get all highlights for a chapter
 def get_highlights(book, chapter):
