@@ -147,7 +147,7 @@ def unhighlight_line():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ PYQ Matching
+# ✅ PYQ Matching (UPDATED)
 @app.route('/api/pyq_match', methods=['POST'])
 def pyq_match():
     try:
@@ -157,7 +157,16 @@ def pyq_match():
         matches = get_pyq_matches(data['chapter_text'])
         print(f"📌 PYQ Matches: {len(matches)}")
 
-        return jsonify({'matches': matches})
+        # Add category and year info
+        enhanced_matches = []
+        for match in matches:
+            enhanced_matches.append({
+                'text': match['text'],
+                'category': 'PYQ',
+                'year': match.get('year')  # optional if year exists
+            })
+
+        return jsonify({'matches': enhanced_matches})
     except Exception as e:
         print("❌ Error in /api/pyq_match:")
         print(traceback.format_exc())
