@@ -9,11 +9,12 @@ MAX_IMAGES = 5  # ✅ Limit number of images to OCR
 def highlight_by_keywords(book, chapter):
     book = book.strip()
     chapter = chapter.strip()
-    print(f"🔍 Pattern-based highlighting: {book} - {chapter}")
+
+    print(f"🔍 Pattern-based highlighting: book='{book}' chapter='{chapter}'")
 
     folder_path = os.path.join("static", "books", book, chapter)
     if not os.path.isdir(folder_path):
-        print("❌ Chapter folder not found or is not a directory")
+        print("❌ Chapter folder not found or is not a directory:", folder_path)
         return []
 
     try:
@@ -33,6 +34,7 @@ def highlight_by_keywords(book, chapter):
     print(f"📄 Extracted text length: {len(text)}")
 
     if not text.strip():
+        print("⚠️ No text extracted from images.")
         return []
 
     highlights = []
@@ -88,9 +90,17 @@ def highlight_by_keywords(book, chapter):
     return cleaned
 
 
-# ✅ Wrapper for API response
+# ✅ Wrapper for API or app.py
 def detect_highlights(book, chapter):
-    print(f"\n🚀 Running detect_highlights for {book}/{chapter}")
+    book = book.strip() if book else ""
+    chapter = chapter.strip() if chapter else ""
+
+    print(f"\n🚀 Running detect_highlights for book='{book}' / chapter='{chapter}'")
+
+    if not book or not chapter:
+        print("❌ ERROR: 'book' or 'chapter' is missing!")
+        return []
+
     raw = highlight_by_keywords(book, chapter)
 
     results = [
