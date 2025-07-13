@@ -1,20 +1,18 @@
 import re
 import os
-from pdf_parser import extract_text_from_chapter
 
-MAX_IMAGES = 5  # ✅ Limit number of images to OCR
+MAX_IMAGES = 5  # ✅ Limit number of pages to scan
 
 
-# ✅ Extract & detect highlights from image text using regex
+# ✅ Extract & detect highlights from pre-extracted text files
 def highlight_by_keywords(book, chapter):
     book = book.strip()
     chapter = chapter.strip()
-
-    print(f"🔍 Pattern-based highlighting: book='{book}' chapter='{chapter}'")
+    print(f"🔍 Pattern-based highlighting: {book} - {chapter}")
 
     folder_path = os.path.join("static", "books", book, chapter)
     if not os.path.isdir(folder_path):
-        print("❌ Chapter folder not found or is not a directory:", folder_path)
+        print("❌ Chapter folder not found or is not a directory")
         return []
 
     try:
@@ -29,17 +27,26 @@ def highlight_by_keywords(book, chapter):
     selected_images = all_images[:MAX_IMAGES]
     print(f"🖼️ Using image(s): {selected_images}")
 
-    # Extract OCR text
-    text = extract_text_from_chapter(book, chapter, selected_images)
-    print(f"📄 Extracted text length: {len(text)}")
+    # ✅ Use corresponding .txt files instead of OCR
+    text = ""
+    for img in selected_images:
+        txt_file = os.path.splitext(img)[0] + ".txt"
+        txt_path = os.path.join(folder_path, txt_file)
+        if os.path.exists(txt_path):
+            with open(txt_path, "r", encoding="utf-8") as f:
+                page_text = f.read()
+                text += page_text + "\n"
+        else:
+            print(f"⚠️ Missing text file for: {img}")
+
+    print(f"📄 Total extracted text length: {len(text)}")
 
     if not text.strip():
-        print("⚠️ No text extracted from images.")
         return []
 
     highlights = []
 
-    # Define regex rules
+    # ✅ Define regex rules
     rules = {
         "definition": [
             r'\b(?:is|are|was|means|refers to|is defined as|can be defined as)\b[^.]{10,150}\.',
@@ -77,30 +84,22 @@ def highlight_by_keywords(book, chapter):
         ]
     }
 
-    # Apply each regex and collect matches
+    # ✅ Apply all regex patterns
     for category, patterns in rules.items():
         for pattern in patterns:
             matches = re.findall(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
             print(f"🔎 {category}: {len(matches)} found")
             highlights.extend(matches)
 
-    # Clean and deduplicate
+    # ✅ Clean and deduplicate
     cleaned = list(set(h.strip(" .,\n") for h in highlights if len(h.strip()) > 2))
     print(f"✨ Total unique highlights: {len(cleaned)}")
     return cleaned
 
 
-# ✅ Wrapper for API or app.py
+# ✅ Final API-friendly wrapper
 def detect_highlights(book, chapter):
-    book = book.strip() if book else ""
-    chapter = chapter.strip() if chapter else ""
-
-    print(f"\n🚀 Running detect_highlights for book='{book}' / chapter='{chapter}'")
-
-    if not book or not chapter:
-        print("❌ ERROR: 'book' or 'chapter' is missing!")
-        return []
-
+    print(f"\n🚀 Running detect_highlights for {book}/{chapter}")
     raw = highlight_by_keywords(book, chapter)
 
     results = [
@@ -111,6 +110,15 @@ def detect_highlights(book, chapter):
             "category": "auto"
         } for h in raw
     ]
+
+    print(f"📬 Returning {len(results)} highlights.")
+    return results
+
+
+
+
+
+
 
     print(f"📬 Returning {len(results)} highlights.")
     return results
