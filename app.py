@@ -77,17 +77,22 @@ def highlight_auto():
         if not all([book, chapter, category]):  
             return jsonify({'error': 'Missing book, chapter, or category'}), 400  
   
-        # ✅ ✅ ✅ ONLY THIS LINE UPDATED:
-        matches = detect_highlights(book, chapter)
+        matches = detect_highlights(book, chapter)  
         print(f"[AUTO-HIGHLIGHT] {len(matches)} matches for '{category}'")  
   
         for match in matches:  
-            highlight_text = match['text']  
-            save_detected_highlight(book, chapter, highlight_text, match["start"], match["end"], category)  
+            highlight_text = match.get('text')  
+            start = match.get('start')  
+            end = match.get('end')  
+  
+            if start is not None and end is not None:  
+                save_detected_highlight(book, chapter, highlight_text, start, end, category)  
+            else:  
+                print(f"⚠️ Skipping match due to missing position: {match}")  
   
         highlights = get_highlights(book, chapter)  
         return jsonify({  
-            'message': f"{len(matches)} highlight(s) saved",  
+            'message': f"{len(matches)} highlight(s) processed",  
             'highlights': highlights  
         })  
   
@@ -174,6 +179,23 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))  
     print(f"\n🚀 Server running at http://0.0.0.0:{port}")  
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
