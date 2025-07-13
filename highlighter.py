@@ -5,7 +5,7 @@ from pyqs import get_pyq_matches
 
 MAX_IMAGES = 5  # ✅ Limit number of images to OCR
 
-# ✅ DEFAULT keyword-based pattern highlighter
+# ✅ Internal keyword-based highlighter
 def highlight_by_keywords(book, chapter):
     print(f"🔍 Pattern-based highlighting: {book} - {chapter}")
 
@@ -80,3 +80,7 @@ def highlight_by_keywords(book, chapter):
     cleaned = list(set(map(lambda x: x.strip().strip(','), highlights)))
     print(f"✨ Found {len(cleaned)} keyword-based highlights.")
     return cleaned
+
+# ✅ Wrapper for app.py
+def detect_highlights(book, chapter):
+    return highlight_by_keywords(book, chapter)
