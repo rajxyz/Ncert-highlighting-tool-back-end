@@ -1,6 +1,5 @@
 import json
 import os
-import re
 
 # 🔧 Path builder for chapter
 def get_chapter_file_path(book, chapter):
@@ -38,37 +37,24 @@ def save_data(book, chapter, highlights):
         print(f"❌ Error saving highlights: {e}")
 
 
-# 🖍️ Save a single highlight using text (auto detect start/end)
-def save_highlight(book, chapter, full_text, highlighted_text, category):
+# 🖍️ Save one detected highlight (assumes start–end is already given)
+def save_detected_highlight(book, chapter, text, start, end, category):
     print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Category: {category}")
     highlights = load_data(book, chapter)
 
-    # Use regex to find all case-insensitive matches
-    pattern = re.compile(re.escape(highlighted_text), re.IGNORECASE)
-    matches = list(pattern.finditer(full_text))
-
-    if not matches:
-        print("⚠️ Highlighted text not found in full_text.")
-        return
-
-    # Use first match
-    match = matches[0]
-    start_index = match.start()
-    end_index = match.end()
-
     entry = {
-        "text": highlighted_text.strip(),
-        "start": start_index,
-        "end": end_index,
+        "text": text.strip(),
+        "start": int(start),
+        "end": int(end),
         "category": category.strip()
     }
 
     if entry not in highlights:
         highlights.append(entry)
         save_data(book, chapter, highlights)
-        print("✅ Highlight added.")
+        print(f"✅ Highlight added: '{text}'")
     else:
-        print("ℹ️ Highlight already exists, skipping.")
+        print(f"ℹ️ Highlight already exists: '{text}'")
 
 
 # 🧽 Remove a highlight
@@ -78,8 +64,8 @@ def remove_highlight(book, chapter, text, start, end, category):
 
     entry = {
         "text": text.strip(),
-        "start": start,
-        "end": end,
+        "start": int(start),
+        "end": int(end),
         "category": category.strip()
     }
 
