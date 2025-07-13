@@ -113,12 +113,3 @@ def detect_highlights(book, chapter):
 
     print(f"📬 Returning {len(results)} highlights.")
     return results
-
-
-
-
-
-
-
-    print(f"📬 Returning {len(results)} highlights.")
-    return results
