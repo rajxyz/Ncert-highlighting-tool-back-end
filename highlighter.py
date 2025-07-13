@@ -81,6 +81,15 @@ def highlight_by_keywords(book, chapter):
     print(f"✨ Found {len(cleaned)} keyword-based highlights.")
     return cleaned
 
-# ✅ Wrapper for app.py
+# ✅ Final wrapper for app.py — structured response
 def detect_highlights(book, chapter):
-    return highlight_by_keywords(book, chapter)
+    print(f"🚀 Running detect_highlights for {book}/{chapter}")
+    raw = highlight_by_keywords(book, chapter)
+    return [
+        {
+            "text": h,
+            "start": None,
+            "end": None,
+            "category": "auto"
+        } for h in raw
+    ]
