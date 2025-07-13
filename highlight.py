@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 # 🔧 Path builder for chapter
 def get_chapter_file_path(book, chapter):
@@ -37,18 +38,23 @@ def save_data(book, chapter, highlights):
         print(f"❌ Error saving highlights: {e}")
 
 
-# 🖍️ Save a single highlight using exact position
+# 🖍️ Save a single highlight using text (auto detect start/end)
 def save_highlight(book, chapter, full_text, highlighted_text, category):
     print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Category: {category}")
     highlights = load_data(book, chapter)
 
-    # Find all occurrences of the highlighted text
-    start_index = full_text.lower().find(highlighted_text.lower())
-    if start_index == -1:
+    # Use regex to find all case-insensitive matches
+    pattern = re.compile(re.escape(highlighted_text), re.IGNORECASE)
+    matches = list(pattern.finditer(full_text))
+
+    if not matches:
         print("⚠️ Highlighted text not found in full_text.")
         return
 
-    end_index = start_index + len(highlighted_text)
+    # Use first match
+    match = matches[0]
+    start_index = match.start()
+    end_index = match.end()
 
     entry = {
         "text": highlighted_text.strip(),
