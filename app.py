@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from highlight import save_highlight, remove_highlight, get_highlights
 from pyqs import get_pyq_matches
+from matcher import detect_highlights  # ✅ NEW IMPORT
 import traceback
 import os
 import json
@@ -65,7 +66,7 @@ def get_chapter_highlights(book, chapter):
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-# ✅ Save single highlight (word-level)
+# ✅ Save single highlight (manual or auto-detect)
 @app.route('/api/highlight', methods=['POST'])
 def highlight_line():
     try:
@@ -77,14 +78,22 @@ def highlight_line():
         end = data.get('end')
         category = data.get('category')
 
-        if not all([book, chapter, text, start, end, category]):
-            return jsonify({'error': 'Missing book, chapter, text, start, end or category'}), 400
+        if not all([book, chapter, text, category]):
+            return jsonify({'error': 'Missing book, chapter, text or category'}), 400
 
-        save_highlight(book, chapter, text, int(start), int(end), category)
+        if start is not None and end is not None:
+            # ✅ Manual highlight
+            save_highlight(book, chapter, text, int(start), int(end), category)
+        else:
+            # ✅ Auto-detect highlight(s)
+            detected = detect_highlights(text, category)
+            for match in detected:
+                highlight_text = text[match["start"]:match["end"]]
+                save_highlight(book, chapter, highlight_text, match["start"], match["end"], category)
+
         highlights = get_highlights(book, chapter)
-
         return jsonify({
-            'message': 'Highlight saved',
+            'message': 'Highlight(s) saved',
             'highlights': highlights
         })
     except Exception as e:
