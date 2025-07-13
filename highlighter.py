@@ -3,16 +3,15 @@ import os
 
 MAX_IMAGES = 5  # ✅ Limit number of pages to scan
 
-
 # ✅ Extract & detect highlights from pre-extracted text files
 def highlight_by_keywords(book, chapter):
     book = book.strip()
     chapter = chapter.strip()
-    print(f"🔍 Pattern-based highlighting: {book} - {chapter}")
+    print(f"\n🔍 Pattern-based highlighting: {book} - {chapter}")
 
     folder_path = os.path.join("static", "books", book, chapter)
     if not os.path.isdir(folder_path):
-        print("❌ Chapter folder not found or is not a directory")
+        print(f"❌ Chapter folder not found: {folder_path}")
         return []
 
     try:
@@ -22,6 +21,10 @@ def highlight_by_keywords(book, chapter):
         ])
     except Exception as e:
         print(f"❌ Error reading image files: {e}")
+        return []
+
+    if not all_images:
+        print(f"⚠️ No image files found in: {folder_path}")
         return []
 
     selected_images = all_images[:MAX_IMAGES]
@@ -35,13 +38,15 @@ def highlight_by_keywords(book, chapter):
         if os.path.exists(txt_path):
             with open(txt_path, "r", encoding="utf-8") as f:
                 page_text = f.read()
+                print(f"📃 Text from {txt_file}: {len(page_text)} chars")
                 text += page_text + "\n"
         else:
             print(f"⚠️ Missing text file for: {img}")
 
-    print(f"📄 Total extracted text length: {len(text)}")
-
-    if not text.strip():
+    total_text_length = len(text.strip())
+    print(f"📄 Total extracted text length: {total_text_length}")
+    if not total_text_length:
+        print("❌ No text extracted. Exiting.")
         return []
 
     highlights = []
@@ -84,17 +89,24 @@ def highlight_by_keywords(book, chapter):
         ]
     }
 
-    # ✅ Apply all regex patterns
+    print("📊 Starting regex pattern matching...")
     for category, patterns in rules.items():
+        total_for_category = 0
         for pattern in patterns:
-            matches = re.findall(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
-            print(f"🔎 {category}: {len(matches)} found")
-            highlights.extend(matches)
+            for match in re.finditer(pattern, text, flags=re.IGNORECASE | re.MULTILINE):
+                matched_text = match.group().strip(" .,\n")
+                if len(matched_text) > 2:
+                    highlights.append({
+                        "text": matched_text,
+                        "start": match.start(),
+                        "end": match.end(),
+                        "category": category
+                    })
+                    total_for_category += 1
+        print(f"🔎 {category}: {total_for_category} match(es)")
 
-    # ✅ Clean and deduplicate
-    cleaned = list(set(h.strip(" .,\n") for h in highlights if len(h.strip()) > 2))
-    print(f"✨ Total unique highlights: {len(cleaned)}")
-    return cleaned
+    print(f"✨ Total highlights collected: {len(highlights)}")
+    return highlights
 
 
 # ✅ Final API-friendly wrapper
@@ -102,14 +114,10 @@ def detect_highlights(book, chapter):
     print(f"\n🚀 Running detect_highlights for {book}/{chapter}")
     raw = highlight_by_keywords(book, chapter)
 
-    results = [
-        {
-            "text": h,
-            "start": None,
-            "end": None,
-            "category": "auto"
-        } for h in raw
-    ]
+    if not raw:
+        print("❌ No highlights detected.")
+        return []
 
-    print(f"📬 Returning {len(results)} highlights.")
-    return results
+    # Return directly as it’s already in structured format
+    print(f"📬 Returning {len(raw)} highlights.")
+    return raw
