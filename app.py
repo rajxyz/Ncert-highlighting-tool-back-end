@@ -10,6 +10,9 @@ import json
 app = Flask(__name__, static_url_path='/static', static_folder='static')
 CORS(app, resources={r"/api/": {"origins": "*"}}, supports_credentials=True)
 
+# 🧹 Words to skip during highlight auto-detection
+JUNK_WORDS = {"the", "a", "an", "in", "on", "and", "of", "at", "to", "for", "is", "are", "was", "by", "from", "this", "that"}
+
 # ✅ Load chapter (images + text)
 @app.route('/api/load_chapter', methods=['POST'])
 def load_chapter():
@@ -34,6 +37,8 @@ def load_chapter():
                 if os.path.exists(text_path):
                     with open(text_path, "r", encoding="utf-8") as f:
                         text_content = f.read()
+                else:
+                    print(f"⚠️ Missing text file for: {text_file}")
                 pages.append({"image": image_url, "text": text_content})
 
         return jsonify({'pages': pages})
@@ -78,7 +83,7 @@ def get_chapter_highlights(book, chapter):
         print("[EXCEPTION] get_chapter_highlights:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
 
-# ✅ Auto-highlight (rule-based)
+# ✅ Auto-highlight (rule-based) with junk filtering
 @app.route('/api/highlight', methods=['POST'])
 def highlight_auto():
     try:
@@ -96,7 +101,7 @@ def highlight_auto():
 
         valid_count = 0
         for match in matches:
-            highlight_text = match.get('text')
+            highlight_text = match.get('text', '').strip()
             start = match.get('start')
             end = match.get('end')
             page_number = match.get('page_number', 0)
@@ -104,12 +109,16 @@ def highlight_auto():
             rule_name = match.get("rule_name")
             source = match.get("source", "rule")
 
-            if not highlight_text:
-                print(f"⚠️ Skipped empty match: {match}")
+            if not highlight_text or start is None or end is None:
+                print(f"⚠️ Skipped invalid match (missing data): {match}")
                 continue
 
-            if start is None or end is None:
-                print(f"⚠️ Skipped match (missing start/end): {match}")
+            # Skip junk or too short
+            if (
+                highlight_text.lower() in JUNK_WORDS or
+                len(highlight_text.split()) < 2
+            ):
+                print(f"⚠️ Skipped junk/short highlight: '{highlight_text}'")
                 continue
 
             print(f"✅ Saving highlight → '{highlight_text}' (Page: {page_number})")
@@ -208,4 +217,3 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     print(f"\n🚀 Server running at http://0.0.0.0:{port}")
     app.run(host="0.0.0.0", port=port, debug=True)
-            
