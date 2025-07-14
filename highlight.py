@@ -79,21 +79,21 @@ def remove_highlight(book, chapter, text, start, end, category, page_number):
         print("⚠️ Highlight not found, skipping.")
 
 
-# 📌 Get all highlights (with optional page filtering)
-def get_highlights(book, chapter, page_number=None):
-    print(f"\n📌 Fetching highlights → Book: {book}, Chapter: {chapter}, Page: {page_number}")
+# 📌 Get all highlights (with optional page + category filtering)
+def get_highlights(book, chapter, page_number=None, category=None):
+    print(f"\n📌 Fetching highlights → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
     highlights = load_data(book, chapter)
 
     if page_number is not None:
         page_number = int(page_number)
         highlights = [h for h in highlights if h.get("page_number") == page_number]
-        print(f"📄 Filtered highlights: {len(highlights)} for page {page_number}")
-    else:
-        print(f"📦 Returning all {len(highlights)} highlights.")
+        print(f"📄 Filtered by page → {len(highlights)} items")
+
+    if category is not None:
+        highlights = [h for h in highlights if h.get("category") == category]
+        print(f"🏷️ Filtered by category → {len(highlights)} items")
 
     return highlights
-
-
 
 
 
