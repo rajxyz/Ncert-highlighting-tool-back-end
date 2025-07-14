@@ -3,7 +3,7 @@ import os
 
 MAX_IMAGES = 5  # Limit number of pages to scan
 
-# ✅ Define regex rules globally
+# Define regex rules globally
 RULES = {
     "definition": [
         r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?\.',
@@ -46,6 +46,18 @@ RULES = {
     ]
 }
 
+# 🧠 Junk text filtering
+def is_junk(text):
+    if len(text) < 5:
+        return True
+    if len(text.split()) < 2:
+        return True
+    junk_phrases = {"of the", "has been", "was one", "is the", "that it", "been called", "his nearly"}
+    junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
+    text_lower = text.lower().strip()
+    if text_lower in junk_words or text_lower in junk_phrases:
+        return True
+    return False
 
 # ✅ Extract & detect highlights from pre-extracted text files
 def highlight_by_keywords(book, chapter, categories=None):
@@ -76,20 +88,8 @@ def highlight_by_keywords(book, chapter, categories=None):
 
     highlights = []
 
-    # ✅ Filter rule categories (if given)
     active_rules = RULES if not categories else {k: RULES[k] for k in categories if k in RULES}
 
-    # ✅ Junk filtering config
-    JUNK_WORDS = {
-        "the", "a", "an", "in", "on", "and", "of", "at", "to", "for",
-        "is", "are", "was", "by", "from", "this", "that"
-    }
-    JUNK_PHRASES = {
-        "complete page", "pura page", "whole page",
-        "entire page", "full paragraph"
-    }
-
-    # ✅ Page-wise scanning
     for idx, img in enumerate(selected_images):
         txt_file = os.path.splitext(img)[0] + ".txt"
         txt_path = os.path.join(folder_path, txt_file)
@@ -103,28 +103,19 @@ def highlight_by_keywords(book, chapter, categories=None):
                     for pattern_index, pattern in enumerate(patterns):
                         for match_index, match in enumerate(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE)):
                             matched_text = match.group().strip(" .,\n")
-
-                            # 🧹 Skip junk matches
-                            if (
-                                matched_text.lower() in JUNK_WORDS or
-                                len(matched_text.split()) < 2 or
-                                len(matched_text) < 5 or
-                                len(matched_text) > 300 or
-                                any(phrase in matched_text.lower() for phrase in JUNK_PHRASES)
-                            ):
-                                print(f"⚠️ Skipped junk: '{matched_text[:40]}...' (len={len(matched_text)})")
-                                continue
-
-                            highlights.append({
-                                "text": matched_text,
-                                "start": match.start(),
-                                "end": match.end(),
-                                "category": category,
-                                "page_number": idx + 1,
-                                "match_id": f"{category}_{pattern_index}_{match_index}",
-                                "rule_name": pattern,
-                                "source": "regex"
-                            })
+                            if len(matched_text) > 2 and not is_junk(matched_text):
+                                highlights.append({
+                                    "text": matched_text,
+                                    "start": match.start(),
+                                    "end": match.end(),
+                                    "category": category,
+                                    "page_number": idx + 1,
+                                    "match_id": f"{category}_{pattern_index}_{match_index}",
+                                    "rule_name": pattern,
+                                    "source": "regex"
+                                })
+                            else:
+                                print(f"⚠️ Skipped junk: '{matched_text}'")
         else:
             print(f"⚠️ Missing text file for: {img}")
 
@@ -143,14 +134,6 @@ def detect_highlights(book, chapter, categories=None):
 
     print(f"📬 Returning {len(raw)} highlights.")
     return raw
-
-
-
-
-
-
-
-
 
 
 
