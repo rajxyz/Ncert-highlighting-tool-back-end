@@ -1,7 +1,7 @@
 import re
 import os
 
-MAX_IMAGES = 5  # ✅ Limit number of pages to scan
+MAX_IMAGES = 5  # Limit number of pages to scan
 
 # ✅ Define regex rules globally
 RULES = {
@@ -18,7 +18,7 @@ RULES = {
         r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|Ω|°C|°F|%)\b'
     ],
     "capitalized_terms": [
-        r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b'  # e.g. "Newton's Laws", "World War"
+        r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b'
     ],
     "example": [
         r'(?:For example|e\.g\.|such as)\s.{5,100}?[.,]',
@@ -32,22 +32,23 @@ RULES = {
     ],
     "theories": [
         r'\b(?:Law|Theory|Principle|Rule) of [A-Z][a-z]+(?: [A-Z][a-z]+)?\b',
-        r'\b[A-Z][a-z]+\'s (?:Law|Theory|Principle|Rule)\b'
+        r"\b[A-Z][a-z]+['’]s (?:Law|Theory|Principle|Rule)\b"
     ],
     "acronyms": [
-        r'\b[A-Z]{2,6}(?:\s[A-Z]{2,6})?\b'  # e.g., NASA, CPU, AI ML
+        r'\b[A-Z]{2,6}(?:\s[A-Z]{2,6})?\b'
     ],
     "list_items": [
         r'(?:^|\n)\s*\d{1,2}[.)-]\s.{5,150}?(?:\.|\n)',
         r'(?:^|\n)\s*[-*•]\s.{5,150}?(?:\.|\n)'
     ],
     "foreign_words": [
-        r'\b\w+(?:us|um|ae|es|is|on|ous|i)\b'  # Latin/Greek ends
+        r'\b\w+(?:us|um|ae|es|is|on|ous|i)\b'
     ]
 }
 
+
 # ✅ Extract & detect highlights from pre-extracted text files
-def highlight_by_keywords(book, chapter):
+def highlight_by_keywords(book, chapter, categories=None):
     book = book.strip()
     chapter = chapter.strip()
     print(f"\n🔍 Pattern-based highlighting: {book} - {chapter}")
@@ -75,16 +76,20 @@ def highlight_by_keywords(book, chapter):
 
     highlights = []
 
+    # ✅ Filter rule categories (if given)
+    active_rules = RULES if not categories else {k: RULES[k] for k in categories if k in RULES}
+
     # ✅ Page-wise scanning
     for idx, img in enumerate(selected_images):
         txt_file = os.path.splitext(img)[0] + ".txt"
         txt_path = os.path.join(folder_path, txt_file)
+
         if os.path.exists(txt_path):
             with open(txt_path, "r", encoding="utf-8") as f:
                 page_text = f.read()
                 print(f"📃 Text from {txt_file} (Page {idx + 1}): {len(page_text)} chars")
 
-                for category, patterns in RULES.items():
+                for category, patterns in active_rules.items():
                     for pattern in patterns:
                         for match in re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE):
                             matched_text = match.group().strip(" .,\n")
@@ -94,7 +99,7 @@ def highlight_by_keywords(book, chapter):
                                     "start": match.start(),
                                     "end": match.end(),
                                     "category": category,
-                                    "page_number": idx + 1  # ✅ Actual page number (1-indexed)
+                                    "page_number": idx + 1
                                 })
         else:
             print(f"⚠️ Missing text file for: {img}")
@@ -104,9 +109,9 @@ def highlight_by_keywords(book, chapter):
 
 
 # ✅ Final API-friendly wrapper
-def detect_highlights(book, chapter):
+def detect_highlights(book, chapter, categories=None):
     print(f"\n🚀 Running detect_highlights for {book}/{chapter}")
-    raw = highlight_by_keywords(book, chapter)
+    raw = highlight_by_keywords(book, chapter, categories=categories)
 
     if not raw:
         print("❌ No highlights detected.")
@@ -114,6 +119,3 @@ def detect_highlights(book, chapter):
 
     print(f"📬 Returning {len(raw)} highlights.")
     return raw
-
-
-
