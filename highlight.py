@@ -37,8 +37,8 @@ def save_data(book, chapter, highlights):
         print(f"❌ Error saving highlights: {e}")
 
 
-# 🖍️ Save one detected highlight (with page number)
-def save_detected_highlight(book, chapter, text, start, end, category, page_number):
+# 🖍️ Save one detected highlight (with metadata)
+def save_detected_highlight(book, chapter, text, start, end, category, page_number, match_id=None, rule_name=None, source=None):
     print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
     highlights = load_data(book, chapter)
 
@@ -47,8 +47,15 @@ def save_detected_highlight(book, chapter, text, start, end, category, page_numb
         "start": int(start),
         "end": int(end),
         "category": category.strip(),
-        "page_number": int(page_number)
+        "page_number": int(page_number),
     }
+
+    if match_id is not None:
+        entry["match_id"] = match_id
+    if rule_name is not None:
+        entry["rule_name"] = rule_name
+    if source is not None:
+        entry["source"] = source
 
     if entry not in highlights:
         highlights.append(entry)
@@ -63,7 +70,7 @@ def remove_highlight(book, chapter, text, start, end, category, page_number):
     print(f"\n🧽 Removing highlight → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
     highlights = load_data(book, chapter)
 
-    entry = {
+    target = {
         "text": text.strip(),
         "start": int(start),
         "end": int(end),
@@ -71,15 +78,23 @@ def remove_highlight(book, chapter, text, start, end, category, page_number):
         "page_number": int(page_number)
     }
 
-    if entry in highlights:
-        highlights.remove(entry)
-        save_data(book, chapter, highlights)
+    # Remove all matching entries (allowing flexibility for duplicates with metadata)
+    new_highlights = [h for h in highlights if not (
+        h.get("text") == target["text"] and
+        h.get("start") == target["start"] and
+        h.get("end") == target["end"] and
+        h.get("category") == target["category"] and
+        h.get("page_number") == target["page_number"]
+    )]
+
+    if len(new_highlights) < len(highlights):
+        save_data(book, chapter, new_highlights)
         print("✅ Highlight removed.")
     else:
         print("⚠️ Highlight not found, skipping.")
 
 
-# 📌 Get all highlights (with optional page + category filtering)
+# 📌 Get all highlights (with optional filters)
 def get_highlights(book, chapter, page_number=None, category=None):
     print(f"\n📌 Fetching highlights → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
     highlights = load_data(book, chapter)
@@ -94,6 +109,4 @@ def get_highlights(book, chapter, page_number=None, category=None):
         print(f"🏷️ Filtered by category → {len(highlights)} items")
 
     return highlights
-
-
 
