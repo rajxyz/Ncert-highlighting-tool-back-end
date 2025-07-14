@@ -47,7 +47,6 @@ RULES = {
 }
 
 
-# 🧠 Junk text filtering
 def is_junk(text):
     print(f"\n🔎 Checking potential junk: '{text}'")
 
@@ -76,13 +75,12 @@ def is_junk(text):
     return False
 
 
-# ✅ Extract & detect highlights from pre-extracted text files
 def highlight_by_keywords(book, chapter, categories=None):
     book = book.strip()
     chapter = chapter.strip()
-    print(f"\n🚧 USING UPDATED HIGHLIGHTER WITH JUNK FILTER DEBUG ENABLED")
-    print(f"\n🔍 Pattern-based highlighting: {book} - {chapter}")
-    print(f"🧪 Received categories: {categories}")
+    print(f"\n🚧 USING UPDATED HIGHLIGHTER WITH DEBUGGING")
+    print(f"📘 Book: {book} | Chapter: {chapter}")
+    print(f"📥 Received categories: {categories}")
 
     folder_path = os.path.join("static", "books", book, chapter)
     if not os.path.isdir(folder_path):
@@ -103,15 +101,17 @@ def highlight_by_keywords(book, chapter, categories=None):
         return []
 
     selected_images = all_images[:MAX_IMAGES]
-    print(f"🖼️ Using image(s): {selected_images}")
+    print(f"🖼️ Scanning image(s): {selected_images}")
 
     highlights = []
 
-    # 🔧 Normalize incoming categories to lowercase
     if categories and isinstance(categories, list):
         normalized = [c.lower() for c in categories]
+        print(f"🔁 Normalized categories: {normalized}")
         active_rules = {k: RULES[k] for k in normalized if k in RULES}
+        print(f"📌 Active rules being applied: {list(active_rules.keys())}")
     else:
+        print("⚠️ No categories passed — using ALL rules")
         active_rules = RULES
 
     for idx, img in enumerate(selected_images):
@@ -121,13 +121,19 @@ def highlight_by_keywords(book, chapter, categories=None):
         if os.path.exists(txt_path):
             with open(txt_path, "r", encoding="utf-8") as f:
                 page_text = f.read()
-                print(f"📃 Text from {txt_file} (Page {idx + 1}): {len(page_text)} chars")
+                print(f"\n📄 Text from {txt_file} (Page {idx + 1}): {len(page_text)} characters")
 
                 for category, patterns in active_rules.items():
                     for pattern_index, pattern in enumerate(patterns):
+                        print(f"\n🔎 Checking pattern [{pattern}] for category [{category}]")
+                        matches_found = False
                         for match_index, match in enumerate(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE)):
+                            matches_found = True
                             matched_text = match.group().strip(" .,\n")
-                            print(f"\n🧪 Matched '{matched_text}' under [{category}]")
+                            print(f"\n🧪 Match found: '{matched_text}' under [{category}]")
+
+                            if len(matched_text) > 300:
+                                print(f"⚠️ LARGE match detected: {len(matched_text)} characters. Check your pattern or input formatting.")
 
                             if len(matched_text) > 2 and not is_junk(matched_text):
                                 print(f"✅ Highlight added: '{matched_text}'\n")
@@ -142,7 +148,9 @@ def highlight_by_keywords(book, chapter, categories=None):
                                     "source": "regex"
                                 })
                             else:
-                                print(f"⚠️ Skipped junk: '{matched_text}'")
+                                print(f"⚠️ Skipped (junk or too short): '{matched_text}'")
+                        if not matches_found:
+                            print(f"❌ No matches found for pattern: {pattern}")
         else:
             print(f"⚠️ Missing text file for: {img}")
 
@@ -150,7 +158,6 @@ def highlight_by_keywords(book, chapter, categories=None):
     return highlights
 
 
-# ✅ Final API-friendly wrapper
 def detect_highlights(book, chapter, categories=None):
     print(f"\n🚀 Running detect_highlights for {book}/{chapter}")
     raw = highlight_by_keywords(book, chapter, categories=categories)
@@ -161,6 +168,7 @@ def detect_highlights(book, chapter, categories=None):
 
     print(f"📬 Returning {len(raw)} highlights.")
     return raw
+
 
                                     
 
