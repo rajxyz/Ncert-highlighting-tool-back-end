@@ -30,27 +30,6 @@ def highlight_by_keywords(book, chapter):
     selected_images = all_images[:MAX_IMAGES]
     print(f"🖼️ Using image(s): {selected_images}")
 
-    # ✅ Use corresponding .txt files instead of OCR
-    text = ""
-    for img in selected_images:
-        txt_file = os.path.splitext(img)[0] + ".txt"
-        txt_path = os.path.join(folder_path, txt_file)
-        if os.path.exists(txt_path):
-            with open(txt_path, "r", encoding="utf-8") as f:
-                page_text = f.read()
-                print(f"📃 Text from {txt_file}: {len(page_text)} chars")
-                text += page_text + "\n"
-        else:
-            print(f"⚠️ Missing text file for: {img}")
-
-    total_text_length = len(text.strip())
-    print(f"📄 Total extracted text length: {total_text_length}")
-    if not total_text_length:
-        print("❌ No text extracted. Exiting.")
-        return []
-
-    highlights = []
-
     # ✅ Define regex rules
     rules = {
         "definition": [
@@ -89,21 +68,31 @@ def highlight_by_keywords(book, chapter):
         ]
     }
 
-    print("📊 Starting regex pattern matching...")
-    for category, patterns in rules.items():
-        total_for_category = 0
-        for pattern in patterns:
-            for match in re.finditer(pattern, text, flags=re.IGNORECASE | re.MULTILINE):
-                matched_text = match.group().strip(" .,\n")
-                if len(matched_text) > 2:
-                    highlights.append({
-                        "text": matched_text,
-                        "start": match.start(),
-                        "end": match.end(),
-                        "category": category
-                    })
-                    total_for_category += 1
-        print(f"🔎 {category}: {total_for_category} match(es)")
+    highlights = []
+
+    for idx, img in enumerate(selected_images):
+        txt_file = os.path.splitext(img)[0] + ".txt"
+        txt_path = os.path.join(folder_path, txt_file)
+        if os.path.exists(txt_path):
+            with open(txt_path, "r", encoding="utf-8") as f:
+                page_text = f.read()
+                print(f"📃 Text from {txt_file} (Page {idx}): {len(page_text)} chars")
+
+                for category, patterns in rules.items():
+                    for pattern in patterns:
+                        for match in re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE):
+                            matched_text = match.group().strip(" .,\n")
+                            if len(matched_text) > 2:
+                                highlights.append({
+                                    "text": matched_text,
+                                    "start": match.start(),
+                                    "end": match.end(),
+                                    "category": category,
+                                    "page_number": idx  # ✅ Proper page number
+                                })
+
+        else:
+            print(f"⚠️ Missing text file for: {img}")
 
     print(f"✨ Total highlights collected: {len(highlights)}")
     return highlights
@@ -118,6 +107,5 @@ def detect_highlights(book, chapter):
         print("❌ No highlights detected.")
         return []
 
-    # Return directly as it’s already in structured format
     print(f"📬 Returning {len(raw)} highlights.")
     return raw
