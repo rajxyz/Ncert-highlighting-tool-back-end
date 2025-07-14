@@ -6,38 +6,43 @@ MAX_IMAGES = 5  # ✅ Limit number of pages to scan
 # ✅ Define regex rules globally
 RULES = {
     "definition": [
-        r'\b(?:is|are|was|means|refers to|is defined as|can be defined as)\b[^.]{10,150}\.',
+        r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?\.',
+        r'\bDefinition:\s?.{10,150}?\.'
     ],
     "date": [
-        r'\b(?:\d{1,2}[/-])?(?:\d{1,2}[/-])?\d{2,4}\b'
+        r'\b\d{1,2}(?:st|nd|rd|th)?\s(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b',
+        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.? \d{1,2},? \d{4}\b',
+        r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b'
     ],
     "units": [
-        r'\b\d+(?:\.\d+)?\s?(?:kg|g|m|cm|km|s|ms|Hz|J|W|°C|%)\b'
+        r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|Ω|°C|°F|%)\b'
     ],
     "capitalized_terms": [
-        r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)?\b'
+        r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b'  # e.g. "Newton's Laws", "World War"
     ],
     "example": [
-        r'(?:for example|e\.g\.|such as)\s[^.]{5,100}'
+        r'(?:For example|e\.g\.|such as)\s.{5,100}?[.,]',
+        r'\bExample:\s.{5,150}?\.'
     ],
     "steps": [
-        r'\b(?:Step \d+|Step-\d+|First,|Then,|Next,|Finally)\b[^.]{5,100}'
+        r'\b(?:Step\s?\d+|First|Second|Then|Next|Finally|In conclusion)[,:]?\s.{5,150}?\.',
     ],
     "cause_effect": [
-        r'\b(?:Because|Due to|As a result|Therefore|Hence)\b[^.]{5,100}'
+        r'\b(?:Because|Due to|Since|As a result|Therefore|Thus|Hence|Consequently)\b.{5,150}?\.',
     ],
     "theories": [
-        r'\b(?:Law|Rule|Theory|Principle) of [A-Z][a-z]+\b'
+        r'\b(?:Law|Theory|Principle|Rule) of [A-Z][a-z]+(?: [A-Z][a-z]+)?\b',
+        r'\b[A-Z][a-z]+\'s (?:Law|Theory|Principle|Rule)\b'
     ],
     "acronyms": [
-        r'\b[A-Z]{2,}(?:\s[A-Z]{2,})?\b'
+        r'\b[A-Z]{2,6}(?:\s[A-Z]{2,6})?\b'  # e.g., NASA, CPU, AI ML
     ],
     "list_items": [
-        r'(?:^|\n)\d+\.\s[^\n]+',
-        r'(?:^|\n)-\s[^\n]+'
+        r'(?:^|\n)\s*\d{1,2}[.)-]\s.{5,150}?(?:\.|\n)',
+        r'(?:^|\n)\s*[-*•]\s.{5,150}?(?:\.|\n)'
     ],
     "foreign_words": [
-        r'\b[A-Za-z]+(?:us|um|ae|es|is|on)\b'
+        r'\b\w+(?:us|um|ae|es|is|on|ous|i)\b'  # Latin/Greek ends
     ]
 }
 
