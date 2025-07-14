@@ -54,18 +54,19 @@ def get_chapter_text(book, chapter):
         print("[EXCEPTION] get_chapter_text:", traceback.format_exc())  
         return jsonify({'error': 'Internal error'}), 500  
   
-# ✅ Get all highlights for chapter  
+# ✅ Get all highlights for chapter (optionally by page)  
 @app.route('/api/chapter_highlights/<book>/<chapter>')  
 def get_chapter_highlights(book, chapter):  
     try:  
-        highlights = get_highlights(book, chapter)  
+        page_number = request.args.get('page_number')  
+        highlights = get_highlights(book, chapter, page_number)  
         print(f"[GET HIGHLIGHTS] Found: {len(highlights)}")  
         return jsonify({"highlights": highlights})  
     except Exception:  
         print("[EXCEPTION] get_chapter_highlights:", traceback.format_exc())  
         return jsonify({'error': 'Internal error'}), 500  
   
-# ✅ Auto-highlight via rule (no manual text, only category)  
+# ✅ Auto-highlight via rule  
 @app.route('/api/highlight', methods=['POST'])  
 def highlight_auto():  
     try:  
@@ -84,9 +85,10 @@ def highlight_auto():
             highlight_text = match.get('text')  
             start = match.get('start')  
             end = match.get('end')  
+            page_number = match.get('page_number') or 0  
   
             if start is not None and end is not None:  
-                save_detected_highlight(book, chapter, highlight_text, start, end, category)  
+                save_detected_highlight(book, chapter, highlight_text, start, end, category, page_number)  
             else:  
                 print(f"⚠️ Skipping match due to missing position: {match}")  
   
@@ -111,11 +113,12 @@ def unhighlight_line():
         start = data.get('start')  
         end = data.get('end')  
         category = data.get('category')  
+        page_number = data.get('page_number') or 0  
   
         if not all([book, chapter, text, start, end, category]):  
             return jsonify({'error': 'Missing required fields'}), 400  
   
-        remove_highlight(book, chapter, text, int(start), int(end), category)  
+        remove_highlight(book, chapter, text, int(start), int(end), category, int(page_number))  
         return jsonify({'message': 'Highlight removed'})  
     except Exception:  
         print("[EXCEPTION] unhighlight_line:", traceback.format_exc())  
@@ -135,7 +138,7 @@ def pyq_match():
         print("[EXCEPTION] pyq_match:", traceback.format_exc())  
         return jsonify({'error': 'Internal error'}), 500  
   
-# ✅ Save all highlights manually (optional use)  
+# ✅ Save all highlights manually  
 @app.route('/api/save_highlights', methods=['POST'])  
 def save_all_highlights():  
     try:  
@@ -179,25 +182,6 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))  
     print(f"\n🚀 Server running at http://0.0.0.0:{port}")  
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
