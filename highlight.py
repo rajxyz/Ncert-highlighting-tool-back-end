@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 # 🔧 Path builder for chapter
 def get_chapter_file_path(book, chapter):
@@ -42,6 +43,17 @@ def save_detected_highlight(book, chapter, text, start, end, category, page_numb
     print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
     highlights = load_data(book, chapter)
 
+    # 🚫 Skip junk or HTML-like highlights
+    if is_junk(text):
+        print(f"🚫 Skipped junk highlight: '{text}'")
+        return
+
+    # ✅ Ensure category is valid
+    allowed_categories = {"name", "date", "definition", "term"}  # <-- customize as per your use
+    if category not in allowed_categories:
+        print(f"⚠️ Invalid category '{category}', skipping highlight.")
+        return
+
     entry = {
         "text": text.strip(),
         "start": int(start),
@@ -78,7 +90,6 @@ def remove_highlight(book, chapter, text, start, end, category, page_number):
         "page_number": int(page_number)
     }
 
-    # Remove all matching entries (allowing flexibility for duplicates with metadata)
     new_highlights = [h for h in highlights if not (
         h.get("text") == target["text"] and
         h.get("start") == target["start"] and
@@ -109,4 +120,19 @@ def get_highlights(book, chapter, page_number=None, category=None):
         print(f"🏷️ Filtered by category → {len(highlights)} items")
 
     return highlights
+
+
+# 🚫 Junk detector function
+def is_junk(text):
+    junk_keywords = {
+        "html", "head", "body", "div", "class", "span", "style", "script",
+        "lang", "href", "meta", "link", "content", "http", "www", "doctype"
+    }
+    if len(text.strip()) < 3:
+        return True
+    if any(tag in text.lower() for tag in junk_keywords):
+        return True
+    if re.match(r'^[\W\d\s]+$', text.strip()):
+        return True
+    return False
 
