@@ -46,23 +46,41 @@ RULES = {
     ]
 }
 
+
 # 🧠 Junk text filtering
 def is_junk(text):
+    print(f"\n🔎 Checking potential junk: '{text}'")
+    
     if len(text) < 5:
+        print("❌ Rejected (too short)")
         return True
+
     if len(text.split()) < 2:
+        print("❌ Rejected (too few words)")
         return True
+
     junk_phrases = {"of the", "has been", "was one", "is the", "that it", "been called", "his nearly"}
     junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
+
     text_lower = text.lower().strip()
-    if text_lower in junk_words or text_lower in junk_phrases:
+    
+    if text_lower in junk_words:
+        print(f"❌ Rejected (exact match in junk words): '{text_lower}'")
         return True
+
+    if text_lower in junk_phrases:
+        print(f"❌ Rejected (exact match in junk phrases): '{text_lower}'")
+        return True
+
+    print("✅ Passed junk filter")
     return False
+
 
 # ✅ Extract & detect highlights from pre-extracted text files
 def highlight_by_keywords(book, chapter, categories=None):
     book = book.strip()
     chapter = chapter.strip()
+    print(f"\n🚧 USING UPDATED HIGHLIGHTER WITH JUNK FILTER DEBUG ENABLED")
     print(f"\n🔍 Pattern-based highlighting: {book} - {chapter}")
 
     folder_path = os.path.join("static", "books", book, chapter)
@@ -103,7 +121,10 @@ def highlight_by_keywords(book, chapter, categories=None):
                     for pattern_index, pattern in enumerate(patterns):
                         for match_index, match in enumerate(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE)):
                             matched_text = match.group().strip(" .,\n")
+                            print(f"\n🧪 Matched '{matched_text}' under [{category}]")
+
                             if len(matched_text) > 2 and not is_junk(matched_text):
+                                print(f"✅ Highlight added: '{matched_text}'\n")
                                 highlights.append({
                                     "text": matched_text,
                                     "start": match.start(),
@@ -119,7 +140,7 @@ def highlight_by_keywords(book, chapter, categories=None):
         else:
             print(f"⚠️ Missing text file for: {img}")
 
-    print(f"✨ Total highlights collected: {len(highlights)}")
+    print(f"\n✨ Total highlights collected: {len(highlights)}")
     return highlights
 
 
@@ -137,5 +158,23 @@ def detect_highlights(book, chapter, categories=None):
 
 
 
-    return raw
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
