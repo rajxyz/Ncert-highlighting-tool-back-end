@@ -37,16 +37,17 @@ def save_data(book, chapter, highlights):
         print(f"❌ Error saving highlights: {e}")
 
 
-# 🖍️ Save one detected highlight (assumes start–end is already given)
-def save_detected_highlight(book, chapter, text, start, end, category):
-    print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Category: {category}")
+# 🖍️ Save one detected highlight (with page number)
+def save_detected_highlight(book, chapter, text, start, end, category, page_number):
+    print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
     highlights = load_data(book, chapter)
 
     entry = {
         "text": text.strip(),
         "start": int(start),
         "end": int(end),
-        "category": category.strip()
+        "category": category.strip(),
+        "page_number": int(page_number)
     }
 
     if entry not in highlights:
@@ -58,15 +59,16 @@ def save_detected_highlight(book, chapter, text, start, end, category):
 
 
 # 🧽 Remove a highlight
-def remove_highlight(book, chapter, text, start, end, category):
-    print(f"\n🧽 Removing highlight → Book: {book}, Chapter: {chapter}, Category: {category}")
+def remove_highlight(book, chapter, text, start, end, category, page_number):
+    print(f"\n🧽 Removing highlight → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
     highlights = load_data(book, chapter)
 
     entry = {
         "text": text.strip(),
         "start": int(start),
         "end": int(end),
-        "category": category.strip()
+        "category": category.strip(),
+        "page_number": int(page_number)
     }
 
     if entry in highlights:
@@ -77,9 +79,21 @@ def remove_highlight(book, chapter, text, start, end, category):
         print("⚠️ Highlight not found, skipping.")
 
 
-# 📌 Get all highlights
-def get_highlights(book, chapter):
-    print(f"\n📌 Fetching highlights → Book: {book}, Chapter: {chapter}")
+# 📌 Get all highlights (with optional page filtering)
+def get_highlights(book, chapter, page_number=None):
+    print(f"\n📌 Fetching highlights → Book: {book}, Chapter: {chapter}, Page: {page_number}")
     highlights = load_data(book, chapter)
-    print(f"📦 Found {len(highlights)} highlights.")
+
+    if page_number is not None:
+        page_number = int(page_number)
+        highlights = [h for h in highlights if h.get("page_number") == page_number]
+        print(f"📄 Filtered highlights: {len(highlights)} for page {page_number}")
+    else:
+        print(f"📦 Returning all {len(highlights)} highlights.")
+
     return highlights
+
+
+
+
+
