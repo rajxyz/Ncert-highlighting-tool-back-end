@@ -90,8 +90,8 @@ def highlight_by_keywords(book, chapter, categories=None):
                 print(f"📃 Text from {txt_file} (Page {idx + 1}): {len(page_text)} chars")
 
                 for category, patterns in active_rules.items():
-                    for pattern in patterns:
-                        for match in re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE):
+                    for pattern_index, pattern in enumerate(patterns):
+                        for match_index, match in enumerate(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE)):
                             matched_text = match.group().strip(" .,\n")
                             if len(matched_text) > 2:
                                 highlights.append({
@@ -99,7 +99,10 @@ def highlight_by_keywords(book, chapter, categories=None):
                                     "start": match.start(),
                                     "end": match.end(),
                                     "category": category,
-                                    "page_number": idx + 1
+                                    "page_number": idx + 1,
+                                    "match_id": f"{category}_{pattern_index}_{match_index}",
+                                    "rule_name": pattern,
+                                    "source": "regex"
                                 })
         else:
             print(f"⚠️ Missing text file for: {img}")
@@ -119,3 +122,4 @@ def detect_highlights(book, chapter, categories=None):
 
     print(f"📬 Returning {len(raw)} highlights.")
     return raw
+
