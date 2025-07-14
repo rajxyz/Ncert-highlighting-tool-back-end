@@ -79,6 +79,16 @@ def highlight_by_keywords(book, chapter, categories=None):
     # ✅ Filter rule categories (if given)
     active_rules = RULES if not categories else {k: RULES[k] for k in categories if k in RULES}
 
+    # ✅ Junk filtering config
+    JUNK_WORDS = {
+        "the", "a", "an", "in", "on", "and", "of", "at", "to", "for",
+        "is", "are", "was", "by", "from", "this", "that"
+    }
+    JUNK_PHRASES = {
+        "complete page", "pura page", "whole page",
+        "entire page", "full paragraph"
+    }
+
     # ✅ Page-wise scanning
     for idx, img in enumerate(selected_images):
         txt_file = os.path.splitext(img)[0] + ".txt"
@@ -93,17 +103,28 @@ def highlight_by_keywords(book, chapter, categories=None):
                     for pattern_index, pattern in enumerate(patterns):
                         for match_index, match in enumerate(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE)):
                             matched_text = match.group().strip(" .,\n")
-                            if len(matched_text) > 2:
-                                highlights.append({
-                                    "text": matched_text,
-                                    "start": match.start(),
-                                    "end": match.end(),
-                                    "category": category,
-                                    "page_number": idx + 1,
-                                    "match_id": f"{category}_{pattern_index}_{match_index}",
-                                    "rule_name": pattern,
-                                    "source": "regex"
-                                })
+
+                            # 🧹 Skip junk matches
+                            if (
+                                matched_text.lower() in JUNK_WORDS or
+                                len(matched_text.split()) < 2 or
+                                len(matched_text) < 5 or
+                                len(matched_text) > 300 or
+                                any(phrase in matched_text.lower() for phrase in JUNK_PHRASES)
+                            ):
+                                print(f"⚠️ Skipped junk: '{matched_text[:40]}...' (len={len(matched_text)})")
+                                continue
+
+                            highlights.append({
+                                "text": matched_text,
+                                "start": match.start(),
+                                "end": match.end(),
+                                "category": category,
+                                "page_number": idx + 1,
+                                "match_id": f"{category}_{pattern_index}_{match_index}",
+                                "rule_name": pattern,
+                                "source": "regex"
+                            })
         else:
             print(f"⚠️ Missing text file for: {img}")
 
@@ -121,5 +142,17 @@ def detect_highlights(book, chapter, categories=None):
         return []
 
     print(f"📬 Returning {len(raw)} highlights.")
+    return raw
+
+
+
+
+
+
+
+
+
+
+
     return raw
 
