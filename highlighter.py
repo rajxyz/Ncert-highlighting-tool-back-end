@@ -50,7 +50,7 @@ RULES = {
 # 🧠 Junk text filtering
 def is_junk(text):
     print(f"\n🔎 Checking potential junk: '{text}'")
-    
+
     if len(text) < 5:
         print("❌ Rejected (too short)")
         return True
@@ -63,7 +63,7 @@ def is_junk(text):
     junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
 
     text_lower = text.lower().strip()
-    
+
     if text_lower in junk_words:
         print(f"❌ Rejected (exact match in junk words): '{text_lower}'")
         return True
@@ -82,6 +82,7 @@ def highlight_by_keywords(book, chapter, categories=None):
     chapter = chapter.strip()
     print(f"\n🚧 USING UPDATED HIGHLIGHTER WITH JUNK FILTER DEBUG ENABLED")
     print(f"\n🔍 Pattern-based highlighting: {book} - {chapter}")
+    print(f"🧪 Received categories: {categories}")
 
     folder_path = os.path.join("static", "books", book, chapter)
     if not os.path.isdir(folder_path):
@@ -106,7 +107,12 @@ def highlight_by_keywords(book, chapter, categories=None):
 
     highlights = []
 
-    active_rules = RULES if not categories else {k: RULES[k] for k in categories if k in RULES}
+    # 🔧 Normalize incoming categories to lowercase
+    if categories and isinstance(categories, list):
+        normalized = [c.lower() for c in categories]
+        active_rules = {k: RULES[k] for k in normalized if k in RULES}
+    else:
+        active_rules = RULES
 
     for idx, img in enumerate(selected_images):
         txt_file = os.path.splitext(img)[0] + ".txt"
@@ -156,18 +162,7 @@ def detect_highlights(book, chapter, categories=None):
     print(f"📬 Returning {len(raw)} highlights.")
     return raw
 
-
-
-
-
-
-
-
-
-
-
-
-
+                                    
 
 
 
