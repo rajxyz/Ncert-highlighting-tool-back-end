@@ -63,35 +63,25 @@ def is_junk(text):
 
     text_lower = text.lower().strip()
 
-    if text_lower in junk_words:
-        print(f"❌ Rejected (exact match in junk words): '{text_lower}'")
+    if text_lower in junk_words or text_lower in junk_phrases:
+        print(f"❌ Rejected as junk: '{text_lower}'")
         return True
 
-    if text_lower in junk_phrases:
-        print(f"❌ Rejected (exact match in junk phrases): '{text_lower}'")
-        return True
-
-    print("✅ Passed junk filter")
     return False
 
 
 def highlight_by_keywords(book, chapter, categories=None):
-    book = book.strip()
-    chapter = chapter.strip()
     print(f"\n🚧 USING UPDATED HIGHLIGHTER WITH DEBUGGING")
     print(f"📘 Book: {book} | Chapter: {chapter}")
     print(f"📥 Received categories: {categories}")
 
-    folder_path = os.path.join("static", "books", book, chapter)
+    folder_path = os.path.join("static", "books", book.strip(), chapter.strip())
     if not os.path.isdir(folder_path):
         print(f"❌ Chapter folder not found: {folder_path}")
         return []
 
     try:
-        all_images = sorted([
-            f for f in os.listdir(folder_path)
-            if f.lower().endswith(('.jpg', '.jpeg', '.png'))
-        ])
+        all_images = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
     except Exception as e:
         print(f"❌ Error reading image files: {e}")
         return []
@@ -104,6 +94,7 @@ def highlight_by_keywords(book, chapter, categories=None):
     print(f"🖼️ Scanning image(s): {selected_images}")
 
     highlights = []
+    seen_texts = set()  # For duplicate prevention
 
     if categories and isinstance(categories, list):
         normalized = [c.lower() for c in categories]
@@ -121,38 +112,43 @@ def highlight_by_keywords(book, chapter, categories=None):
         if os.path.exists(txt_path):
             with open(txt_path, "r", encoding="utf-8") as f:
                 page_text = f.read()
-                print(f"\n📄 Text from {txt_file} (Page {idx + 1}): {len(page_text)} characters")
+                print(f"\n📄 Page {idx + 1} → {txt_file}: {len(page_text)} characters")
 
                 for category, patterns in active_rules.items():
                     for pattern_index, pattern in enumerate(patterns):
-                        print(f"\n🔎 Checking pattern [{pattern}] for category [{category}]")
-                        matches_found = False
+                        print(f"\n🔎 Pattern [{pattern}] for category [{category}]")
                         for match_index, match in enumerate(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE)):
-                            matches_found = True
                             matched_text = match.group().strip(" .,\n")
-                            print(f"\n🧪 Match found: '{matched_text}' under [{category}]")
+                            print(f"🧪 Match #{match_index}: '{matched_text}'")
 
                             if len(matched_text) > 300:
-                                print(f"⚠️ LARGE match detected: {len(matched_text)} characters. Check your pattern or input formatting.")
+                                print("⚠️ Match too long — possible greedy regex.")
 
-                            if len(matched_text) > 2 and not is_junk(matched_text):
-                                print(f"✅ Highlight added: '{matched_text}'\n")
-                                highlights.append({
-                                    "text": matched_text,
-                                    "start": match.start(),
-                                    "end": match.end(),
-                                    "category": category,
-                                    "page_number": idx + 1,
-                                    "match_id": f"{category}_{pattern_index}_{match_index}",
-                                    "rule_name": pattern,
-                                    "source": "regex"
-                                })
-                            else:
-                                print(f"⚠️ Skipped (junk or too short): '{matched_text}'")
-                        if not matches_found:
-                            print(f"❌ No matches found for pattern: {pattern}")
+                            if is_junk(matched_text):
+                                print(f"🚫 Skipping junk: {matched_text}")
+                                continue
+
+                            match_key = f"{matched_text}|{category}|{idx+1}"
+                            if match_key in seen_texts:
+                                print("⏩ Duplicate match skipped.")
+                                continue
+
+                            seen_texts.add(match_key)
+                            highlight = {
+                                "text": matched_text,
+                                "start": match.start(),
+                                "end": match.end(),
+                                "category": category,
+                                "page_number": idx + 1,
+                                "match_id": f"{category}_{pattern_index}_{match_index}",
+                                "rule_name": pattern,
+                                "source": "regex"
+                            }
+                            highlights.append(highlight)
+                            print(f"✅ Highlight saved: '{matched_text}'")
+
         else:
-            print(f"⚠️ Missing text file for: {img}")
+            print(f"⚠️ Text file missing for: {img}")
 
     print(f"\n✨ Total highlights collected: {len(highlights)}")
     return highlights
@@ -168,11 +164,6 @@ def detect_highlights(book, chapter, categories=None):
 
     print(f"📬 Returning {len(raw)} highlights.")
     return raw
-
-
-                                    
-
-
 
 
 
