@@ -1,1 +1,27 @@
+<div class="para">
+  used <span class="italic">Systema Naturae</span> as the title of his publication. The scope of systematics was later enlarged to include identification, nomenclature and <span class="highlight">classification</span>. Systematics takes into account evolutionary relationships between organisms.
+</div>
 
+<h2 class="section-title">1.2 <span class="highlight-blue">Taxonomic Categories</span></h2>
+
+<div class="para">
+  Classification is not a single step process but involves hierarchy of steps in which each step represents a rank or category. Since the category is a part of overall taxonomic arrangement, it is called the <span class="highlight">taxonomic category</span> and all categories together constitute the <span class="highlight">taxonomic hierarchy</span>. Each category, referred to as a unit of classification, in fact, represents a rank and is commonly termed as <span class="highlight">taxon</span> (pl.: taxa).
+</div>
+
+<div class="para">
+  Taxonomic categories and hierarchy can be illustrated by an example. Insects represent a group of organisms sharing common features like three pairs of jointed legs. It means insects are recognisable concrete objects which can be classified, and thus were given a rank or category. Can you name other such groups of organisms? Remember, groups represent category. Category further denotes rank. Each rank or <span class="highlight">taxon</span>, in fact, represents a unit of classification. These taxonomic groups/categories are distinct biological entities and not merely morphological aggregates.
+</div>
+
+<div class="para">
+  Taxonomical studies of all known organisms have led to the development of common categories such as kingdom, phylum or division (for plants), class, order, family, genus and species. All organisms, including those in the plant and animal kingdoms have species as the lowest category. Now the question you may ask is, how to place an organism in various categories? The basic requirement is the knowledge of characters of an individual or group of organisms. This helps in identifying similarities and dissimilarities among the individuals of the same kind of organisms as well as of other kinds of organisms.
+</div>
+
+<h3 class="subsection-title">1.2.1 <span class="highlight-lightblue">Species</span></h3>
+
+<div class="para">
+  Taxonomic studies consider a group of individual organisms with fundamental similarities as a <span class="highlight">species</span>. One should be able to distinguish one species from the other closely related species based on the distinct morphological differences. Let us consider <span class="italic">Mangifera indica</span>, <span class="italic">Solanum tuberosum</span> (potato) and <span class="italic">Panthera leo</span> (lion). All the three names, <span class="italic">indica</span>, <span class="italic">tuberosum</span> and <span class="italic">leo</span>, represent the specific epithets, while the first words <span class="italic">Mangifera</span>, <span class="italic">Solanum</span> and <span class="italic">Panthera</span> are genera and represents another higher level of taxon or category. Each genus may have one or more than one specific epithets representing different organisms, but having morphological similarities. For example, <span class="italic">Panthera</span> has another specific epithet called <span class="italic">tigris</span> and <span class="italic">Solanum</span> includes species like <span class="italic">nigrum</span> and
+</div>
+
+<div class="footer">
+  Reprint 2025-26
+</div>
