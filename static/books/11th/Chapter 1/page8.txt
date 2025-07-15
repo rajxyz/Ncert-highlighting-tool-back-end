@@ -1,1 +1,88 @@
+<div class="para">
+  these, based on the common features like presence of notochord and dorsal hollow neural system, are included in phylum <span class="italic">Chordata</span>. In case of plants, classes with a few similar characters are assigned to a higher category called <strong>Division</strong>.
+</div>
 
+<h3 class="subsection-title">1.2.7 <span class="highlight-lightblue">Kingdom</span></h3>
+
+<div class="para">
+  All animals belonging to various phyla are assigned to the highest category called <strong>Kingdom Animalia</strong> in the classification system of animals. The <strong>Kingdom Plantae</strong>, on the other hand, is distinct, and comprises all plants from various divisions. Henceforth, we will refer to these two groups as animal and plant kingdoms.
+</div>
+
+<div class="para">
+  The taxonomic categories from species to kingdom have been shown in ascending order starting with species in Figure 1.1. These are broad categories. However, taxonomists have also developed sub-categories in this hierarchy to facilitate more sound and scientific placement of various taxa.
+</div>
+
+<div class="para">
+  Look at the hierarchy in Figure 1.1. Can you recall the basis of arrangement? Say, for example, as we go higher from species to kingdom, the number of common characteristics goes on decreasing. Lower the taxa, more are the characteristics that the members within the taxon share. Higher the category, greater is the difficulty of determining the relationship to other taxa at the same level. Hence, the problem of classification becomes more complex.
+</div>
+
+<div class="para">
+  Table 1.1 indicates the taxonomic categories to which some common organisms like housefly, man, mango and wheat belong.
+</div>
+
+<figure class="image-left">
+  <img src="figure1-1.png" alt="Figure 1.1 Taxonomic categories hierarchy">
+  <figcaption>
+    <strong>Figure 1.1</strong> Taxonomic categories showing hierarchical arrangement in ascending order
+  </figcaption>
+</figure>
+
+<h4 class="table-title">
+  <strong>Table 1.1</strong> Organisms with their Taxonomic Categories
+</h4>
+
+<table border="1" class="taxonomy-table">
+  <thead>
+    <tr>
+      <th>Common Name</th>
+      <th>Biological Name</th>
+      <th>Genus</th>
+      <th>Family</th>
+      <th>Order</th>
+      <th>Class</th>
+      <th>Phylum/<br>Division</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Man</td>
+      <td><span class="italic">Homo sapiens</span></td>
+      <td><span class="italic">Homo</span></td>
+      <td>Hominidae</td>
+      <td>Primata</td>
+      <td>Mammalia</td>
+      <td>Chordata</td>
+    </tr>
+    <tr>
+      <td>Housefly</td>
+      <td><span class="italic">Musca domestica</span></td>
+      <td><span class="italic">Musca</span></td>
+      <td>Muscidae</td>
+      <td>Diptera</td>
+      <td>Insecta</td>
+      <td>Arthropoda</td>
+    </tr>
+    <tr>
+      <td>Mango</td>
+      <td><span class="italic">Mangifera indica</span></td>
+      <td><span class="italic">Mangifera</span></td>
+      <td>Anacardiaceae</td>
+      <td>Sapindales</td>
+      <td>Dicotyledonae</td>
+      <td>Angiospermae</td>
+    </tr>
+    <tr>
+      <td>Wheat</td>
+      <td><span class="italic">Triticum aestivum</span></td>
+      <td><span class="italic">Triticum</span></td>
+      <td>Poaceae</td>
+      <td>Poales</td>
+      <td>Monocotyledonae</td>
+      <td>Angiospermae</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="footer">
+  Reprint 2025-26
+</div>
