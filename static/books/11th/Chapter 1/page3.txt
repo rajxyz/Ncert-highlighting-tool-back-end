@@ -1,5 +1,122 @@
-1.1 Diversity in the Living World
-How wonderful is the living world! The wide range of living types is amazing. The extraordinary habitats in which we find living organisms, be it cold mountains, deciduous forests, oceans, fresh water lakes, deserts or hot springs, leave us speechless.
-The beauty of a galloping horse, of the migrating birds, the valley of flowers or the attacking shark evokes awe and a deep sense of wonder. The ecological conflict and cooperation among members of a population and among populations of a community or even the molecular traffic inside a cell make us deeply reflect on – what indeed is life?
-This question has two implicit questions within it. The first is a technical one and seeks answer to what living is as opposed to the non-living, and the second is a philosophical one, and seeks answer to what the purpose of life is.
-As scientists, we shall not attempt answering the second question. We will try to reflect on – what is living?
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 1 - The Living World</title>
+  <style>
+    body {
+      font-family: 'Georgia', serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom, #d1e78e 10%, #ffffff 50%);
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 30px;
+      background-color: white;
+      box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .chapter-title {
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      color: #0072CE;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .chapter-subtitle {
+      text-align: center;
+      font-size: 26px;
+      font-weight: bold;
+      color: #0072CE;
+      margin-bottom: 30px;
+      text-transform: uppercase;
+    }
+
+    .toc {
+      font-size: 14px;
+      color: #0072CE;
+      font-style: italic;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    .toc p {
+      margin: 0;
+    }
+
+    .para {
+      font-size: 16px;
+      line-height: 1.8;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      color: #0072CE;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .highlight {
+      font-weight: bold;
+    }
+
+    .italic {
+      font-style: italic;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #4a4a4a;
+      margin-top: 40px;
+      padding: 10px;
+      background-color: #d1e78e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="chapter-title">Chapter 1</div>
+    <div class="chapter-subtitle">The Living World</div>
+
+    <div class="toc">
+      <p>1.1 <span class="italic">Diversity in the Living World</span></p>
+      <p>1.2 <span class="italic">Taxonomic Categories</span></p>
+    </div>
+
+    <div class="para">
+      How wonderful is the living world! The wide range of living types is amazing. The extraordinary habitats in which we find living organisms,
+      be it cold mountains, deciduous forests, oceans, fresh water lakes, deserts or hot springs, leave us speechless.
+      The beauty of a galloping horse, of the migrating birds, the valley of flowers or the attacking shark evokes awe and a deep sense of wonder.
+      The ecological conflict and cooperation among members of a population and among populations of a community or even the molecular traffic inside a cell
+      make us deeply reflect on – <span class="italic">what indeed is life?</span> This question has two implicit questions within it.
+      The first is a technical one and seeks answer to what living is as opposed to the non-living, and the second is a philosophical one,
+      and seeks answer to what the purpose of life is.
+      As scientists, we shall not attempt answering the second question. We will try to reflect on – what is living?
+    </div>
+
+    <div class="section-title">1.1 &nbsp; Diversity in the Living World</div>
+
+    <div class="para">
+      If you look around you will see a large variety of living organisms, be it potted plants, insects, birds, your pets or other animals and plants.
+      There are also several organisms that you cannot see with your naked eye but they are all around you.
+      If you were to increase the area that you make observations in, the range and variety of organisms that you see would increase.
+      Obviously, if you were to visit a dense forest, you would probably see a much greater number and kinds of living organisms in it.
+      Each different kind of plant, animal or organism that you see, represents a species.
+      The number of species that are known and described range between <span class="highlight">1.7 - 1.8 million.</span>
+      This refers to <span class="highlight">biodiversity</span> or the number and
+    </div>
+  </div>
+
+  <div class="footer">
+    Reprint 2025-26
+  </div>
+</body>
+</html>
