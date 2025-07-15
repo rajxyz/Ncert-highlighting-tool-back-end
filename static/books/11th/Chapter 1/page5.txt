@@ -1,1 +1,31 @@
+<div class="para">
+  <strong>4.</strong> The first word denoting the genus starts with a capital letter while the specific epithet starts with a small letter. It can be illustrated with the example of <span class="italic">Mangifera indica</span>.
+</div>
 
+<div class="para">
+  Name of the author appears after the specific epithet, i.e., at the end of the biological name and is written in an abbreviated form, e.g., <span class="italic">Mangifera indica</span> Linn. It indicates that this species was first described by Linnaeus.
+</div>
+
+<div class="para">
+  Since it is nearly impossible to study all the living organisms, it is necessary to devise some means to make this possible. This process is <span class="highlight">classification</span>. Classification is the process by which anything is grouped into convenient categories based on some easily observable characters. For example, we easily recognise groups such as plants or animals or dogs, cats or insects. The moment we use any of these terms, we associate certain characters with the organism in that group. What image do you see when you think of a dog? Obviously, each one of us will see ‘dogs’ and not ‘cats’. Now, if we were to think of ‘Alsatians’ we know what we are talking about. Similarly, suppose we were to say ‘mammals’, you would, of course, think of animals with external ears and body hair. Likewise, in plants, if we try to talk of ‘Wheat’, the picture in each of our minds will be of wheat plants, not of rice or any other plant. Hence, all these - ‘Dogs’, ‘Cats’, ‘Mammals’, ‘Wheat’, ‘Rice’, ‘Plants’, ‘Animals’, etc., are convenient categories we use to study organisms. The scientific term for these categories is <span class="highlight">taxa</span>. Here you must recognise that taxa can indicate categories at very different levels. ‘Plants’ – also form a taxa. ‘Wheat’ is also a taxa. Similarly, ‘animals’, ‘mammals’, ‘dogs’ are all taxa – but you know that a dog is a mammal and mammals are animals. Therefore, ‘animals’, ‘mammals’ and ‘dogs’ represent taxa at different levels.
+</div>
+
+<div class="para">
+  Hence, based on characteristics, all living organisms can be classified into different taxa. This process of classification is <span class="highlight">taxonomy</span>. External and internal structure, along with the structure of cell, development process and ecological information of organisms are essential and form the basis of modern taxonomic studies.
+</div>
+
+<div class="para">
+  Hence, characterisation, identification, classification and nomenclature are the processes that are basic to taxonomy.
+</div>
+
+<div class="para">
+  Taxonomy is not something new. Human beings have always been interested in knowing more and more about the various kinds of organisms, particularly with reference to their own use. In early days, human beings needed to find sources for their basic needs of food, clothing and shelter. Hence, the earliest classifications were based on the ‘uses’ of various organisms.
+</div>
+
+<div class="para">
+  Human beings were, since long, not only interested in knowing more about different kinds of organisms and their diversities, but also the relationships among them. This branch of study was referred to as <span class="highlight">systematics</span>. The word systematics is derived from the Latin word ‘systema’ which means systematic arrangement of organisms. Linnaeus
+</div>
+
+<div class="footer">
+  Reprint 2025-26
+</div>
