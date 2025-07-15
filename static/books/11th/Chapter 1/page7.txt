@@ -1,0 +1,37 @@
+<div class="para">
+  <span class="italic">melongena</span>. Human beings belong to the species <span class="italic">sapiens</span> which is grouped in the genus <span class="italic">Homo</span>. The scientific name thus, for human being, is written as <span class="italic">Homo sapiens</span>.
+</div>
+
+<h3 class="subsection-title">1.2.2 <span class="highlight-lightblue">Genus</span></h3>
+
+<div class="para">
+  <span class="highlight">Genus</span> comprises a group of related species which has more characters in common in comparison to species of other genera. We can say that genera are aggregates of closely related species. For example, potato and brinjal are two different species but both belong to the genus <span class="italic">Solanum</span>. Lion (<span class="italic">Panthera leo</span>), leopard (<span class="italic">P. pardus</span>) and tiger (<span class="italic">P. tigris</span>) with several common features, are all species of the genus <span class="italic">Panthera</span>. This genus differs from another genus <span class="italic">Felis</span> which includes cats.
+</div>
+
+<h3 class="subsection-title">1.2.3 <span class="highlight-lightblue">Family</span></h3>
+
+<div class="para">
+  The next category, <span class="highlight">Family</span>, has a group of related genera with still less number of similarities as compared to genus and species. Families are characterised on the basis of both vegetative and reproductive features of plant species. Among plants for example, three different genera <span class="italic">Solanum</span>, <span class="italic">Petunia</span> and <span class="italic">Datura</span> are placed in the family <span class="italic">Solanaceae</span>. Among animals for example, genus <span class="italic">Panthera</span>, comprising lion, tiger, leopard is put along with genus, <span class="italic">Felis</span> (cats) in the family <span class="italic">Felidae</span>. Similarly, if you observe the features of a cat and a dog, you will find some similarities and some differences as well. They are separated into two different families – Felidae and Canidae, respectively.
+</div>
+
+<h3 class="subsection-title">1.2.4 <span class="highlight-lightblue">Order</span></h3>
+
+<div class="para">
+  You have seen earlier that categories like species, genus and families are based on a number of similar characters. Generally, order and other higher taxonomic categories are identified based on the aggregates of characters. Order being a higher category, is the assemblage of families which exhibit a few similar characters. The similar characters are less in number as compared to different genera included in a family. Plant families like <span class="italic">Convolvulaceae</span>, <span class="italic">Solanaceae</span> are included in the order <span class="italic">Polymoniales</span> mainly based on the floral characters. The animal order, <span class="italic">Carnivora</span>, includes families like <span class="italic">Felidae</span> and <span class="italic">Canidae</span>.
+</div>
+
+<h3 class="subsection-title">1.2.5 <span class="highlight-lightblue">Class</span></h3>
+
+<div class="para">
+  This category includes related orders. For example, order <span class="italic">Primata</span> comprising monkey, gorilla and gibbon is placed in class <span class="italic">Mammalia</span> along with order <span class="italic">Carnivora</span> that includes animals like tiger, cat and dog. Class <span class="italic">Mammalia</span> has other orders also.
+</div>
+
+<h3 class="subsection-title">1.2.6 <span class="highlight-lightblue">Phylum</span></h3>
+
+<div class="para">
+  Classes comprising animals like fishes, amphibians, reptiles, birds along with mammals constitute the next higher category called <span class="highlight">Phylum</span>.
+</div>
+
+<div class="footer">
+  Reprint 2025-26
+</div>
