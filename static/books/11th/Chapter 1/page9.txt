@@ -1,1 +1,59 @@
+<h2 class="section-title" style="text-align:center; color:teal; margin-top:1em;">
+  Summary
+</h2>
 
+<div class="para">
+  The living world is rich in variety. Millions of plants and animals have been identified and described but a large number still remains unknown. The very range of organisms in terms of size, colour, habitat, physiological and morphological features makes us seek the defining characteristics of living organisms.
+</div>
+
+<div class="para">
+  In order to facilitate the study of kinds and diversity of organisms, biologists have evolved certain rules and principles for identification, nomenclature and classification of organisms. The branch of knowledge dealing with these aspects is referred to as <strong>taxonomy</strong>.
+</div>
+
+<div class="para">
+  The taxonomic studies of various species of plants and animals are useful in agriculture, forestry, industry and in general for knowing our bio-resources and their diversity. The basics of taxonomy like identification, naming and classification of organisms are universally evolved under international codes.
+</div>
+
+<div class="para">
+  Based on the resemblances and distinct differences, each organism is identified and assigned a correct scientific/biological name comprising two words as per the binomial system of nomenclature. An organism represents/occupies a place or position in the system of classification. There are many categories/ranks which are generally referred to as taxonomic categories or taxa. All the categories constitute a taxonomic hierarchy.
+</div>
+
+<h3 class="subsection-title" style="color:deepskyblue; margin-top:1.5em;">
+  Exercises
+</h3>
+
+<ol class="exercise-list">
+  <li>Why are living organisms classified?</li>
+  <li>Why are the classification systems changing every now and then?</li>
+  <li>What different criteria would you choose to classify people that you meet often?</li>
+  <li>What do we learn from identification of individuals and populations?</li>
+  <li>
+    Given below is the scientific name of Mango. Identify the correctly written name.<br>
+    <span class="italic">Mangifera Indica</span><br>
+    <span class="italic">Mangifera indica</span>
+  </li>
+  <li>
+    Define a taxon. Give some examples of taxa at different hierarchical levels.
+  </li>
+  <li>
+    Can you identify the correct sequence of taxonomical categories?<br>
+    (a) Species → Order → Phylum → Kingdom<br>
+    (b) Genus → Species → Order → Kingdom<br>
+    (c) Species → Genus → Order → Phylum
+  </li>
+  <li>
+    Try to collect all the currently accepted meanings for the word 'species'.<br>
+    Discuss with your teacher the meaning of species in case of higher plants and animals on one hand, and bacteria on the other hand.
+  </li>
+  <li>
+    Define and understand the following terms:<br>
+    (i) Phylum (ii) Class (iii) Family (iv) Order (v) Genus
+  </li>
+  <li>
+    Illustrate the taxonomical hierarchy with suitable examples of a plant and an animal.
+  </li>
+</ol>
+
+<div class="footer">
+  Reprint 2025-26
+</div>
