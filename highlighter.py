@@ -2,12 +2,9 @@ import re
 import os
 import inflect
 
-MAX_IMAGES = 5  # Limit number of pages to scan
-
-# Inflect engine for singularizing
+MAX_IMAGES = 5
 inflector = inflect.engine()
 
-# Define regex rules globally
 RULES = {
     "definition": [
         r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?\.',
@@ -50,38 +47,19 @@ RULES = {
     ]
 }
 
-
 def is_junk(text):
-    print(f"\n🔎 Checking potential junk: '{text}'")
-
-    if len(text) < 5:
-        print("❌ Rejected (too short)")
-        return True
-
-    if len(text.split()) < 2:
-        print("❌ Rejected (too few words)")
+    if len(text) < 5 or len(text.split()) < 2:
         return True
 
     junk_phrases = {"of the", "has been", "was one", "is the", "that it", "been called", "his nearly"}
     junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
 
     text_lower = text.lower().strip()
-
-    if text_lower in junk_words or text_lower in junk_phrases:
-        print(f"❌ Rejected as junk: '{text_lower}'")
-        return True
-
-    return False
-
+    return text_lower in junk_words or text_lower in junk_phrases
 
 def highlight_by_keywords(book, chapter, categories=None, page=None):
-    print(f"\n🚧 USING UPDATED HIGHLIGHTER WITH DEBUGGING")
-    print(f"📘 Book: {book} | Chapter: {chapter} | Page: {page}")
-    print(f"📥 Received categories: {categories}")
-
     folder_path = os.path.join("static", "books", book.strip(), chapter.strip())
     if not os.path.isdir(folder_path):
-        print(f"❌ Chapter folder not found: {folder_path}")
         return []
 
     highlights = []
@@ -92,129 +70,65 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
             inflector.singular_noun(c.lower()) or c.lower()
             for c in categories
         ]
-        print(f"🔁 Normalized categories: {normalized}")
         active_rules = {k: RULES[k] for k in normalized if k in RULES}
-        print(f"📌 Active rules being applied: {list(active_rules.keys())}")
     else:
-        print("⚠️ No categories passed — using ALL rules")
         active_rules = RULES
 
+    def process_page_text(text, page_number):
+        for category, patterns in active_rules.items():
+            for pattern_index, pattern in enumerate(patterns):
+                for match_index, match in enumerate(re.finditer(pattern, text, flags=re.IGNORECASE | re.MULTILINE)):
+                    matched_text = match.group().strip(" .,\n")
+
+                    if len(matched_text) > 300 or is_junk(matched_text):
+                        continue
+
+                    match_key = f"{matched_text}|{category}|{page_number}"
+                    if match_key in seen_texts:
+                        continue
+
+                    seen_texts.add(match_key)
+                    highlights.append({
+                        "text": matched_text,
+                        "start": match.start(),
+                        "end": match.end(),
+                        "category": category,
+                        "page_number": page_number,
+                        "match_id": f"{category}_{pattern_index}_{match_index}",
+                        "rule_name": pattern,
+                        "source": "regex"
+                    })
+
     if page:
-        txt_file = f"{page}.txt"
-        txt_path = os.path.join(folder_path, txt_file)
-
+        txt_path = os.path.join(folder_path, f"{page}.txt")
         if os.path.exists(txt_path):
-            print(f"\n📄 Scanning Page {page}: {txt_file}")
             with open(txt_path, "r", encoding="utf-8") as f:
-                page_text = f.read()
-                print(f"📄 Text length: {len(page_text)} characters")
-
-                for category, patterns in active_rules.items():
-                    for pattern_index, pattern in enumerate(patterns):
-                        print(f"\n🔎 Pattern [{pattern}] for category [{category}]")
-                        for match_index, match in enumerate(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE)):
-                            matched_text = match.group().strip(" .,\n")
-                            print(f"🧪 Match #{match_index}: '{matched_text}'")
-
-                            if len(matched_text) > 300:
-                                print("⚠️ Match too long — possible greedy regex.")
-
-                            if is_junk(matched_text):
-                                print(f"🚫 Skipping junk: {matched_text}")
-                                continue
-
-                            match_key = f"{matched_text}|{category}|{page}"
-                            if match_key in seen_texts:
-                                print("⏩ Duplicate match skipped.")
-                                continue
-
-                            seen_texts.add(match_key)
-                            highlight = {
-                                "text": matched_text,
-                                "start": match.start(),
-                                "end": match.end(),
-                                "category": category,
-                                "page_number": int(page),
-                                "match_id": f"{category}_{pattern_index}_{match_index}",
-                                "rule_name": pattern,
-                                "source": "regex"
-                            }
-                            highlights.append(highlight)
-                            print(f"✅ Highlight saved: '{matched_text}'")
-        else:
-            print(f"⚠️ Text file not found for page {page}: {txt_file}")
-
+                process_page_text(f.read(), int(page))
     else:
-        try:
-            all_images = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
-        except Exception as e:
-            print(f"❌ Error reading image files: {e}")
-            return []
-
-        if not all_images:
-            print(f"⚠️ No image files found in: {folder_path}")
-            return []
-
-        selected_images = all_images[:MAX_IMAGES]
-        print(f"🖼️ Scanning image(s): {selected_images}")
+        image_files = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+        selected_images = image_files[:MAX_IMAGES]
 
         for idx, img in enumerate(selected_images):
             txt_file = os.path.splitext(img)[0] + ".txt"
             txt_path = os.path.join(folder_path, txt_file)
-
             if os.path.exists(txt_path):
                 with open(txt_path, "r", encoding="utf-8") as f:
-                    page_text = f.read()
-                    print(f"\n📄 Page {idx + 1} → {txt_file}: {len(page_text)} characters")
+                    process_page_text(f.read(), idx + 1)
 
-                    for category, patterns in active_rules.items():
-                        for pattern_index, pattern in enumerate(patterns):
-                            print(f"\n🔎 Pattern [{pattern}] for category [{category}]")
-                            for match_index, match in enumerate(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE)):
-                                matched_text = match.group().strip(" .,\n")
-                                print(f"🧪 Match #{match_index}: '{matched_text}'")
-
-                                if len(matched_text) > 300:
-                                    print("⚠️ Match too long — possible greedy regex.")
-
-                                if is_junk(matched_text):
-                                    print(f"🚫 Skipping junk: {matched_text}")
-                                    continue
-
-                                match_key = f"{matched_text}|{category}|{idx+1}"
-                                if match_key in seen_texts:
-                                    print("⏩ Duplicate match skipped.")
-                                    continue
-
-                                seen_texts.add(match_key)
-                                highlight = {
-                                    "text": matched_text,
-                                    "start": match.start(),
-                                    "end": match.end(),
-                                    "category": category,
-                                    "page_number": idx + 1,
-                                    "match_id": f"{category}_{pattern_index}_{match_index}",
-                                    "rule_name": pattern,
-                                    "source": "regex"
-                                }
-                                highlights.append(highlight)
-                                print(f"✅ Highlight saved: '{matched_text}'")
-            else:
-                print(f"⚠️ Text file missing for: {img}")
-
-    print(f"\n✨ Total highlights collected: {len(highlights)}")
     return highlights
 
-
 def detect_highlights(book, chapter, categories=None, page=None):
-    print(f"\n🚀 Running detect_highlights for {book}/{chapter} - Page: {page}")
-    raw = highlight_by_keywords(book, chapter, categories=categories, page=page)
+    return highlight_by_keywords(book, chapter, categories, page)
 
-    if not raw:
-        print("❌ No highlights detected.")
-        return []
 
-    print(f"📬 Returning {len(raw)} highlights.")
-    return raw
+
+
+
+
+
+
+
+
+
 
 
