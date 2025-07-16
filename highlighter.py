@@ -14,7 +14,7 @@ RULES = {
         r'\b\d{1,2}(?:st|nd|rd|th)?\s(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b',
         r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.? \d{1,2},? \d{4}\b',
         r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
-        r'\b(19\d{2}|20\d{2})\b'  # ✅ Year-only match added
+        r'\b(19|20)\d{2}\b'
     ],
     "units": [
         r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|\u03A9|\u00B0C|\u00B0F|%)\b'
@@ -51,35 +51,36 @@ RULES = {
 def is_junk(text):
     if len(text) < 5 or len(text.split()) < 2:
         return True
+
     junk_phrases = {"of the", "has been", "was one", "is the", "that it", "been called", "his nearly"}
     junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
+
     text_lower = text.lower().strip()
     return text_lower in junk_words or text_lower in junk_phrases
 
 def highlight_by_keywords(book, chapter, categories=None, page=None):
-    print(f"\n\uD83D\uDEA7 USING UPDATED HIGHLIGHTER WITH FULL DEBUGGING")
-    print(f"\ud83d\udcd8 Book: {book} | Chapter: {chapter} | Page: {page}")
-    print(f"\ud83d\udcc5 Received categories: {categories} (type: {type(categories)})")
+    print(f"[INFO] USING UPDATED HIGHLIGHTER WITH FULL DEBUGGING")
+    print(f"[INFO] Book: {book} | Chapter: {chapter} | Page: {page}")
+    print(f"[INFO] Received categories: {categories} (type: {type(categories)})")
 
     folder_path = os.path.join("static", "books", book.strip(), chapter.strip())
     if not os.path.isdir(folder_path):
-        print(f"\u274c Chapter folder not found: {folder_path}")
+        print(f"[ERROR] Chapter folder not found: {folder_path}")
         return []
 
     highlights = []
     seen_texts = set()
 
     if categories and isinstance(categories, list):
-        normalized = [inflector.singular_noun(c.lower()) or c.lower() for c in categories]
-        print(f"\ud83d\udd01 Normalized categories: {normalized}")
-        if normalized == ["date"]:
-            print("\u26a0\ufe0f WARNING: Only 'date' category received — check if frontend dropdown is misconfigured.")
+        normalized = [
+            inflector.singular_noun(c.lower()) or c.lower()
+            for c in categories
+        ]
+        print(f"[DEBUG] Normalized categories: {normalized}")
         active_rules = {k: RULES[k] for k in normalized if k in RULES}
-        print(f"\ud83d\udccc Active rules being applied: {list(active_rules.keys())}")
-        if 'date' in active_rules and not any('\\b(19' in rule or '\\b(20' in rule for rule in active_rules['date']):
-            print("\u26a0\ufe0f NOTE: Year-only regex not found in 'date' rules — consider adding it.")
+        print(f"[DEBUG] Active rules: {list(active_rules.keys())}")
     else:
-        print("\u26a0\ufe0f No categories passed — using ALL rules")
+        print("[WARN] No categories passed — using ALL rules")
         active_rules = RULES
 
     pages_to_scan = []
@@ -90,56 +91,59 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
         if os.path.exists(txt_path):
             pages_to_scan.append((page, txt_path))
         else:
-            print(f"\u26a0\ufe0f Text file not found for page {page}: {txt_file}")
+            print(f"[WARN] Text file not found for page {page}: {txt_file}")
     else:
-        print("\u26a0\ufe0f Page parameter missing — scanning top 5 image-based pages.")
         try:
             all_images = sorted([
                 f for f in os.listdir(folder_path)
-                if f.lower().endswith((".jpg", ".jpeg", ".png"))
+                if f.lower().endswith(('.jpg', '.jpeg', '.png'))
             ])
             selected_images = all_images[:MAX_IMAGES]
-            print(f"\ud83d\uddbc\ufe0f Scanning image(s): {selected_images}")
+            print(f"[INFO] Scanning image(s): {selected_images}")
+
             for idx, img in enumerate(selected_images):
                 txt_file = os.path.splitext(img)[0] + ".txt"
                 txt_path = os.path.join(folder_path, txt_file)
                 if os.path.exists(txt_path):
                     pages_to_scan.append((idx + 1, txt_path))
                 else:
-                    print(f"\u26a0\ufe0f Text file missing for: {img}")
+                    print(f"[WARN] Text file missing for: {img}")
+
         except Exception as e:
-            print(f"\u274c Error reading image files: {e}")
+            print(f"[ERROR] Error reading image files: {e}")
             return []
 
     for page_number, txt_path in pages_to_scan:
-        print(f"\n\ud83d\udcc4 Scanning Page {page_number}: {os.path.basename(txt_path)}")
+        print(f"[INFO] Scanning Page {page_number}: {os.path.basename(txt_path)}")
         try:
             with open(txt_path, "r", encoding="utf-8") as f:
                 page_text = f.read()
         except Exception as e:
-            print(f"\u274c Failed to read {txt_path}: {e}")
+            print(f"[ERROR] Failed to read {txt_path}: {e}")
             continue
 
-        print(f"\ud83d\udcc4 Text length: {len(page_text)} characters")
+        print(f"[INFO] Text length: {len(page_text)} characters")
 
         for category, patterns in active_rules.items():
             for pattern_index, pattern in enumerate(patterns):
-                print(f"\n\ud83d\udd0e Pattern [{pattern}] for category [{category}]")
+                print(f"[MATCH] Pattern: {pattern} | Category: {category}")
                 matches = list(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE))
-                print(f"\ud83d\udd0d Total matches found: {len(matches)}")
+                print(f"[MATCH] Total found: {len(matches)}")
 
                 for match_index, match in enumerate(matches):
                     matched_text = match.group().strip(" .,\n")
-                    print(f"\ud83e\uddea Match #{match_index}: '{matched_text}'")
+                    print(f"[MATCH] #{match_index}: {matched_text}")
 
                     if len(matched_text) > 300:
-                        print("\u26a0\ufe0f Match too long — possible greedy regex.")
+                        print("[WARN] Match too long — possible greedy regex")
+
                     if is_junk(matched_text):
-                        print(f"\u274c Skipping junk: {matched_text}")
+                        print(f"[SKIP] Junk: {matched_text}")
                         continue
+
                     match_key = f"{matched_text}|{category}|{page_number}"
                     if match_key in seen_texts:
-                        print("\u23e9 Duplicate match skipped.")
+                        print("[SKIP] Duplicate match")
                         continue
 
                     seen_texts.add(match_key)
@@ -154,23 +158,24 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
                         "source": "regex"
                     }
                     highlights.append(highlight)
-                    print(f"\u2705 Highlight saved: '{matched_text}'")
+                    print(f"[OK] Highlight saved: {matched_text}")
 
-    print(f"\n\u2728 Total highlights collected: {len(highlights)}")
+    print(f"[INFO] Total highlights collected: {len(highlights)}")
     return highlights
 
 def detect_highlights(book, chapter, categories=None, page=None):
-    print(f"\n\ud83d\ude80 Running detect_highlights for {book}/{chapter} - Page: {page}")
+    print(f"[INFO] Running detect_highlights for {book}/{chapter} - Page: {page}")
     if not isinstance(categories, list):
-        print(f"\u26a0\ufe0f Expected 'categories' to be list, got {type(categories)} instead. Converting...")
+        print(f"[WARN] Expected 'categories' to be list, got {type(categories)}. Converting...")
         categories = [categories] if categories else []
 
     raw = highlight_by_keywords(book, chapter, categories=categories, page=page)
 
     if not raw:
-        print("\u274c No highlights detected.")
+        print("[ERROR] No highlights detected")
         return []
 
-    print(f"\ud83d\udcec Returning {len(raw)} highlights.")
+    print(f"[INFO] Returning {len(raw)} highlights")
     return raw
+
 
