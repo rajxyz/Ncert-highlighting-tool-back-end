@@ -6,6 +6,7 @@ from pyqs import get_pyq_matches
 import traceback
 import os
 import json
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__, static_url_path='/static', static_folder='static')
 CORS(app, resources={r"/api/": {"origins": "*"}}, supports_credentials=True)
@@ -41,7 +42,7 @@ def load_chapter():
                     print(f"⚠️ Missing text file for: {text_file}")
                 pages.append({"image": image_url, "text": text_content})
 
-        return jsonify({'pages': pages})
+        return jsonify({'pages': pages}), 200
     except Exception:
         print("[EXCEPTION] load_chapter:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
@@ -54,7 +55,7 @@ def get_chapter_text(book, chapter):
         print(f"[GET CHAPTER TEXT] 📄 Path: {path}")
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
-                return jsonify({"text": f.read()})
+                return jsonify({"text": f.read()}), 200
         return jsonify({"error": "Text file not found"}), 404
     except Exception:
         print("[EXCEPTION] get_chapter_text:", traceback.format_exc())
@@ -78,7 +79,7 @@ def get_chapter_highlights(book, chapter):
             highlights = [h for h in highlights if h.get('category') == category]
             print(f"  ↪️ Filtered by category='{category}': {len(highlights)}")
 
-        return jsonify({"highlights": highlights})
+        return jsonify({"highlights": highlights}), 200
     except Exception:
         print("[EXCEPTION] get_chapter_highlights:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
@@ -91,13 +92,12 @@ def highlight_auto():
         book = data.get('book')
         chapter = data.get('chapter')
         category = data.get('category')
-page = data.get('page')  # ✅ get page (optional)
-        
+        page = data.get('page')  # ✅ FIXED indentation
+
         if not all([book, chapter, category]):
             print("⚠️ Missing fields in highlight request")
             return jsonify({'error': 'Missing book, chapter, or category'}), 400
 
-        # ✅ FIX: Pass category to highlighter
         matches = detect_highlights(book, chapter, categories=[category], page=page)
         print(f"[AUTO-HIGHLIGHT] 🧠 {len(matches)} matches detected for category '{category}'")
 
@@ -115,7 +115,6 @@ page = data.get('page')  # ✅ get page (optional)
                 print(f"⚠️ Skipped invalid match (missing data): {match}")
                 continue
 
-            # Skip junk or too short
             if (
                 highlight_text.lower() in JUNK_WORDS or
                 len(highlight_text.split()) < 2
@@ -133,7 +132,7 @@ page = data.get('page')  # ✅ get page (optional)
         return jsonify({
             'message': f"{valid_count} valid highlight(s) saved",
             'highlights': highlights
-        })
+        }), 200
     except Exception:
         print("[EXCEPTION] highlight_auto:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
@@ -156,7 +155,7 @@ def unhighlight_line():
 
         print(f"[REMOVE] ❌ Removing '{text}' from page {page_number}")
         remove_highlight(book, chapter, text, int(start), int(end), category, int(page_number))
-        return jsonify({'message': 'Highlight removed'})
+        return jsonify({'message': 'Highlight removed'}), 200
     except Exception:
         print("[EXCEPTION] unhighlight_line:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
@@ -169,8 +168,7 @@ def pyq_match():
         chapter_text = data.get('chapter_text', "")
         matches = get_pyq_matches(chapter_text)
         print(f"[PYQ MATCH] 📌 {len(matches)} PYQs found")
-
-        return jsonify({'matches': matches})
+        return jsonify({'matches': matches}), 200
     except Exception:
         print("[EXCEPTION] pyq_match:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
@@ -192,16 +190,17 @@ def save_all_highlights():
             json.dump(highlights, f, ensure_ascii=False, indent=2)
 
         print(f"[SAVE ALL] 💾 Saved {len(highlights)} highlights → {save_path}")
-        return jsonify({"message": "Highlights saved successfully"})
+        return jsonify({"message": "Highlights saved successfully"}), 200
     except Exception:
         print("[EXCEPTION] save_all_highlights:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
 
-# ✅ Serve images
+# ✅ Serve images with security
 @app.route('/static/books/<book>/<chapter>/<filename>')
 def serve_static_image(book, chapter, filename):
     try:
-        return send_from_directory(f'static/books/{book}/{chapter}', filename)
+        safe_filename = secure_filename(filename)
+        return send_from_directory(f'static/books/{book}/{chapter}', safe_filename)
     except Exception:
         print("[EXCEPTION] serve_static_image:", traceback.format_exc())
         return "Error loading image", 500
@@ -219,9 +218,6 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     print(f"\n🚀 Server running at http://0.0.0.0:{port}")
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
-
 
 
 
