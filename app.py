@@ -91,13 +91,14 @@ def highlight_auto():
         book = data.get('book')
         chapter = data.get('chapter')
         category = data.get('category')
-
+page = data.get('page')  # ✅ get page (optional)
+        
         if not all([book, chapter, category]):
             print("⚠️ Missing fields in highlight request")
             return jsonify({'error': 'Missing book, chapter, or category'}), 400
 
         # ✅ FIX: Pass category to highlighter
-        matches = detect_highlights(book, chapter, categories=[category])
+        matches = detect_highlights(book, chapter, categories=[category], page=page)
         print(f"[AUTO-HIGHLIGHT] 🧠 {len(matches)} matches detected for category '{category}'")
 
         valid_count = 0
@@ -218,6 +219,9 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     print(f"\n🚀 Server running at http://0.0.0.0:{port}")
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
+
 
 
 
