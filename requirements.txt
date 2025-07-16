@@ -6,3 +6,4 @@ PyMuPDF
 python-dotenv
 flask-cors
 pytesseract
+inflect
