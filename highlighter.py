@@ -1,7 +1,11 @@
 import re
 import os
+import inflect
 
 MAX_IMAGES = 5  # Limit number of pages to scan
+
+# Inflect engine for singularizing
+inflector = inflect.engine()
 
 # Define regex rules globally
 RULES = {
@@ -84,7 +88,10 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
     seen_texts = set()
 
     if categories and isinstance(categories, list):
-        normalized = [c.lower() for c in categories]
+        normalized = [
+            inflector.singular_noun(c.lower()) or c.lower()
+            for c in categories
+        ]
         print(f"🔁 Normalized categories: {normalized}")
         active_rules = {k: RULES[k] for k in normalized if k in RULES}
         print(f"📌 Active rules being applied: {list(active_rules.keys())}")
@@ -92,7 +99,6 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
         print("⚠️ No categories passed — using ALL rules")
         active_rules = RULES
 
-    # 🔍 If a specific page is given
     if page:
         txt_file = f"{page}.txt"
         txt_path = os.path.join(folder_path, txt_file)
@@ -139,7 +145,6 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
             print(f"⚠️ Text file not found for page {page}: {txt_file}")
 
     else:
-        # 🧾 Fall back to scanning first N pages
         try:
             all_images = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
         except Exception as e:
@@ -211,8 +216,5 @@ def detect_highlights(book, chapter, categories=None, page=None):
 
     print(f"📬 Returning {len(raw)} highlights.")
     return raw
-
-
-
 
 
