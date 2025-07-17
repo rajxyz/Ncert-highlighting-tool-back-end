@@ -177,5 +177,31 @@ def detect_highlights(book, chapter, categories=None, page=None):
 
     print(f"[INFO] Returning {len(raw)} highlights")
     return raw
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
