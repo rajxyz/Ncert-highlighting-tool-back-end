@@ -5,6 +5,7 @@ import inflect
 MAX_IMAGES = 5
 inflector = inflect.engine()
 
+# ✅ REGEX RULES for each category
 RULES = {
     "definition": [
         r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?\.',
@@ -14,7 +15,7 @@ RULES = {
         r'\b\d{1,2}(?:st|nd|rd|th)?\s(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b',
         r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.? \d{1,2},? \d{4}\b',
         r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
-        r'\b(19|20)\d{2}\b'  # Matches year-only like 1947
+        r'\b(?:19|20)\d{2}\b'  # ✅ Year-only pattern
     ],
     "units": [
         r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|\u03A9|\u00B0C|\u00B0F|%)\b'
@@ -45,77 +46,78 @@ RULES = {
     ],
     "foreign_words": [
         r'\b\w+(?:us|um|ae|es|is|on|ous|i)\b'
+    ],
+    "name": [
+        r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)+\b'  # e.g., Jawaharlal Nehru
+    ],
+    "place": [
+        r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b'  # Simple capitalized locations
     ]
 }
 
+# ✅ Allow 4-digit years even if short
 def is_junk(text):
     text = text.strip()
-    if len(text) < 3:
+    if len(text) < 5 and not (text.isdigit() and len(text) == 4):
         return True
+    if len(text.split()) < 2 and not (text.isdigit() and len(text) == 4):
+        return True
+
     junk_phrases = {"of the", "has been", "was one", "is the", "that it", "been called", "his nearly"}
     junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
-    if text.lower() in junk_words or text.lower() in junk_phrases:
-        return True
-    # Allow 4-digit years
-    if re.fullmatch(r"\d{4}", text):
-        return False
-    return False
+
+    return text.lower() in junk_words or text.lower() in junk_phrases
 
 def normalize_category(cat):
     return inflector.singular_noun(cat.lower()) or cat.lower()
 
 def highlight_by_keywords(book, chapter, categories=None, page=None):
-    print(f"[INFO] USING UPDATED HIGHLIGHTER WITH FULL DEBUGGING")
-    print(f"[INFO] Book: {book} | Chapter: {chapter} | Page: {page}")
-    print(f"[INFO] Received categories: {categories} (type: {type(categories)})")
+    print(f"[DEBUG] Initializing highlight_by_keywords")
+    print(f"[INFO] Book: {book}, Chapter: {chapter}, Page: {page}")
+    print(f"[INFO] Incoming categories: {categories}")
 
     folder_path = os.path.join("static", "books", book.strip(), chapter.strip())
     if not os.path.isdir(folder_path):
-        print(f"[ERROR] Chapter folder not found: {folder_path}")
+        print(f"[ERROR] Directory not found: {folder_path}")
         return []
 
     highlights = []
     seen_texts = set()
 
+    # Normalize categories and select rules
     if categories and isinstance(categories, list):
         normalized = [normalize_category(c) for c in categories]
-        print(f"[DEBUG] Normalized categories: {normalized}")
-        if len(normalized) == 1:
-            print(f"[WARN] Only one category received: {normalized} — verify frontend selection")
         active_rules = {k: RULES[k] for k in normalized if k in RULES}
-        print(f"[DEBUG] Active rules: {list(active_rules.keys())}")
+        print(f"[DEBUG] Active rules applied: {list(active_rules.keys())}")
+        if not active_rules:
+            print(f"[WARN] No active rules found for: {normalized}")
     else:
-        print("[WARN] No categories passed — using ALL rules")
+        print("[INFO] No categories provided, using ALL rules")
         active_rules = RULES
 
+    # PAGE selection logic
     pages_to_scan = []
-
     if page:
         txt_file = f"{page}.txt"
         txt_path = os.path.join(folder_path, txt_file)
         if os.path.exists(txt_path):
+            print(f"[INFO] Scanning only page {page}")
             pages_to_scan.append((page, txt_path))
         else:
-            print(f"[WARN] Text file not found for page {page}: {txt_file}")
+            print(f"[ERROR] Specified page {page} not found in chapter")
+            return []
     else:
         try:
-            all_images = sorted([
-                f for f in os.listdir(folder_path)
-                if f.lower().endswith(('.jpg', '.jpeg', '.png'))
-            ])
-            selected_images = all_images[:MAX_IMAGES]
-            print(f"[INFO] Scanning image(s): {selected_images}")
-
-            for idx, img in enumerate(selected_images):
+            images = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+            for idx, img in enumerate(images[:MAX_IMAGES]):
                 txt_file = os.path.splitext(img)[0] + ".txt"
                 txt_path = os.path.join(folder_path, txt_file)
                 if os.path.exists(txt_path):
                     pages_to_scan.append((idx + 1, txt_path))
                 else:
-                    print(f"[WARN] Text file missing for: {img}")
-
+                    print(f"[WARN] Text missing for image: {img}")
         except Exception as e:
-            print(f"[ERROR] Error reading image files: {e}")
+            print(f"[ERROR] Could not list files in: {folder_path} → {e}")
             return []
 
     for page_number, txt_path in pages_to_scan:
@@ -124,35 +126,27 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
             with open(txt_path, "r", encoding="utf-8") as f:
                 page_text = f.read()
         except Exception as e:
-            print(f"[ERROR] Failed to read {txt_path}: {e}")
+            print(f"[ERROR] Could not read {txt_path}: {e}")
             continue
 
-        print(f"[INFO] Text length: {len(page_text)} characters")
+        print(f"[INFO] Text length: {len(page_text)}")
 
         for category, patterns in active_rules.items():
             for pattern_index, pattern in enumerate(patterns):
-                print(f"[MATCH] {category.upper()} → Pattern {pattern_index} scanning...")
                 matches = list(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE))
                 print(f"[MATCH] {category.upper()} → Pattern {pattern_index} matched {len(matches)} time(s)")
 
                 for match_index, match in enumerate(matches):
                     matched_text = match.group().strip(" .,\n")
-                    print(f"[MATCH #{match_index}] {matched_text}")
-
-                    if len(matched_text) > 300:
-                        print("[WARN] Match too long — possible greedy regex")
-
                     if is_junk(matched_text):
                         print(f"[SKIP] Junk text: {matched_text}")
                         continue
-
                     match_key = f"{matched_text}|{category}|{page_number}"
                     if match_key in seen_texts:
-                        print(f"[SKIP] Duplicate match: {matched_text}")
+                        print(f"[SKIP] Duplicate: {matched_text}")
                         continue
-
                     seen_texts.add(match_key)
-                    highlight = {
+                    highlights.append({
                         "text": matched_text,
                         "start": match.start(),
                         "end": match.end(),
@@ -161,120 +155,18 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
                         "match_id": f"{category}_{pattern_index}_{match_index}",
                         "rule_name": pattern,
                         "source": "regex"
-                    }
-                    highlights.append(highlight)
-                    print(f"[OK] Highlight saved: {matched_text}")
+                    })
+                    print(f"[OK] Match: {matched_text} (Page: {page_number})")
 
-    print(f"[INFO] Total highlights collected: {len(highlights)}")
+    print(f"[RESULT] Total highlights: {len(highlights)}")
     return highlights
 
 def detect_highlights(book, chapter, categories=None, page=None):
     print(f"[INFO] Running detect_highlights: Book={book}, Chapter={chapter}, Page={page}")
     if not isinstance(categories, list):
-        print(f"[WARN] Expected 'categories' to be list, got {type(categories)}. Converting...")
+        print(f"[WARN] 'categories' not a list: got {type(categories)}")
         categories = [categories] if categories else []
 
-    raw = highlight_by_keywords(book, chapter, categories=categories, page=page)
-
-    if not raw:
-        print("[ERROR] No highlights detected")
-        return []
-
-    print(f"[INFO] Returning {len(raw)} highlights")
-    return raw
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    result = highlight_by_keywords(book, chapter, categories=categories, page=page)
+    print(f"[INFO] Highlights returned: {len(result)}")
+    return result
