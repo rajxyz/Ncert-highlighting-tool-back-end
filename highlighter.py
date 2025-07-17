@@ -51,12 +51,12 @@ RULES = {
 def is_junk(text):
     if len(text) < 5 or len(text.split()) < 2:
         return True
-
     junk_phrases = {"of the", "has been", "was one", "is the", "that it", "been called", "his nearly"}
     junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
+    return text.lower().strip() in junk_words or text.lower().strip() in junk_phrases
 
-    text_lower = text.lower().strip()
-    return text_lower in junk_words or text_lower in junk_phrases
+def normalize_category(cat):
+    return inflector.singular_noun(cat.lower()) or cat.lower()
 
 def highlight_by_keywords(book, chapter, categories=None, page=None):
     print(f"[INFO] USING UPDATED HIGHLIGHTER WITH FULL DEBUGGING")
@@ -72,10 +72,7 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
     seen_texts = set()
 
     if categories and isinstance(categories, list):
-        normalized = [
-            inflector.singular_noun(c.lower()) or c.lower()
-            for c in categories
-        ]
+        normalized = [normalize_category(c) for c in categories]
         print(f"[DEBUG] Normalized categories: {normalized}")
         active_rules = {k: RULES[k] for k in normalized if k in RULES}
         print(f"[DEBUG] Active rules: {list(active_rules.keys())}")
@@ -177,7 +174,21 @@ def detect_highlights(book, chapter, categories=None, page=None):
 
     print(f"[INFO] Returning {len(raw)} highlights")
     return raw
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
