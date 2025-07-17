@@ -5,59 +5,49 @@ import inflect
 MAX_IMAGES = 5
 inflector = inflect.engine()
 
+# === REGEX RULES ===
 RULES = {
-    "definition": [
-        r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?\.',
-        r'\bDefinition:\s?.{10,150}?\.'
-    ],
+    "definition": [...],  # keep existing
     "date": [
         r'\b\d{1,2}(?:st|nd|rd|th)?\s(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b',
         r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.? \d{1,2},? \d{4}\b',
         r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
         r'\b(19|20)\d{2}\b'
     ],
-    "units": [
-        r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|\u03A9|\u00B0C|\u00B0F|%)\b'
+    "units": [...],
+    "capitalized_terms": [...],
+    "example": [...],
+    "steps": [...],
+    "cause_effect": [...],
+    "theories": [...],
+    "acronyms": [...],
+    "list_items": [...],
+    "foreign_words": [...],
+
+    # ✅ Add basic rules for name, place, event
+    "name": [
+        r'\b[A-Z][a-z]+(?: [A-Z][a-z]+)*\b'
     ],
-    "capitalized_terms": [
-        r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b'
+    "place": [
+        r'\b(?:Delhi|Mumbai|India|Asia|Europe|Africa|USA|UK|Japan)\b'
     ],
-    "example": [
-        r'(?:For example|e\.g\.|such as)\s.{5,100}?[.,]',
-        r'\bExample:\s.{5,150}?\.'
-    ],
-    "steps": [
-        r'\b(?:Step\s?\d+|First|Second|Then|Next|Finally|In conclusion)[,:]?\s.{5,150}?\.',
-    ],
-    "cause_effect": [
-        r'\b(?:Because|Due to|Since|As a result|Therefore|Thus|Hence|Consequently)\b.{5,150}?\.',
-    ],
-    "theories": [
-        r'\b(?:Law|Theory|Principle|Rule) of [A-Z][a-z]+(?: [A-Z][a-z]+)?\b',
-        r"\b[A-Z][a-z]+['’]s (?:Law|Theory|Principle|Rule)\b"
-    ],
-    "acronyms": [
-        r'\b[A-Z]{2,6}(?:\s[A-Z]{2,6})?\b'
-    ],
-    "list_items": [
-        r'(?:^|\n)\s*\d{1,2}[.)-]\s.{5,150}?(?:\.|\n)',
-        r'(?:^|\n)\s*[-*\u2022]\s.{5,150}?(?:\.|\n)'
-    ],
-    "foreign_words": [
-        r'\b\w+(?:us|um|ae|es|is|on|ous|i)\b'
+    "event": [
+        r'\b(?:Independence|Revolution|War|Treaty|Protest|Movement|Partition)\b'
     ]
 }
 
+# === HELPERS ===
 def is_junk(text):
-    if len(text) < 5 or len(text.split()) < 2:
-        return True
-    junk_phrases = {"of the", "has been", "was one", "is the", "that it", "been called", "his nearly"}
-    junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
+    if len(text) < 4: return True
+    if len(text.split()) < 2 and not text.isdigit(): return True
+    junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one"}
+    junk_phrases = {"of the", "has been", "was one", "been called"}
     return text.lower().strip() in junk_words or text.lower().strip() in junk_phrases
 
 def normalize_category(cat):
     return inflector.singular_noun(cat.lower()) or cat.lower()
 
+# === MAIN HIGHLIGHT FUNCTION ===
 def highlight_by_keywords(book, chapter, categories=None, page=None):
     print(f"[INFO] USING UPDATED HIGHLIGHTER WITH FULL DEBUGGING")
     print(f"[INFO] Book: {book} | Chapter: {chapter} | Page: {page}")
@@ -71,10 +61,13 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
     highlights = []
     seen_texts = set()
 
+    # === CATEGORY FILTERING ===
     if categories and isinstance(categories, list):
         normalized = [normalize_category(c) for c in categories]
         print(f"[DEBUG] Normalized categories: {normalized}")
         active_rules = {k: RULES[k] for k in normalized if k in RULES}
+        if not active_rules:
+            print(f"[WARN] No matching regex rules found for: {normalized}")
         print(f"[DEBUG] Active rules: {list(active_rules.keys())}")
     else:
         print("[WARN] No categories passed — using ALL rules")
@@ -82,11 +75,13 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
 
     pages_to_scan = []
 
+    # === PAGE SELECTION ===
     if page:
-        txt_file = f"{page}.txt"
+        txt_file = f"page{page}.txt" if not str(page).endswith(".txt") else page
         txt_path = os.path.join(folder_path, txt_file)
         if os.path.exists(txt_path):
             pages_to_scan.append((page, txt_path))
+            print(f"[DEBUG] Only scanning page {page}")
         else:
             print(f"[WARN] Text file not found for page {page}: {txt_file}")
     else:
@@ -94,22 +89,20 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
             all_images = sorted([
                 f for f in os.listdir(folder_path)
                 if f.lower().endswith(('.jpg', '.jpeg', '.png'))
-            ])
-            selected_images = all_images[:MAX_IMAGES]
-            print(f"[INFO] Scanning image(s): {selected_images}")
-
-            for idx, img in enumerate(selected_images):
+            ])[:MAX_IMAGES]
+            print(f"[INFO] Scanning image(s): {all_images}")
+            for idx, img in enumerate(all_images):
                 txt_file = os.path.splitext(img)[0] + ".txt"
                 txt_path = os.path.join(folder_path, txt_file)
                 if os.path.exists(txt_path):
                     pages_to_scan.append((idx + 1, txt_path))
                 else:
-                    print(f"[WARN] Text file missing for: {img}")
-
+                    print(f"[WARN] Missing OCR text for: {img}")
         except Exception as e:
-            print(f"[ERROR] Error reading image files: {e}")
+            print(f"[ERROR] Reading folder failed: {e}")
             return []
 
+    # === ACTUAL MATCHING ===
     for page_number, txt_path in pages_to_scan:
         print(f"[INFO] Scanning Page {page_number}: {os.path.basename(txt_path)}")
         try:
@@ -122,44 +115,43 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
         print(f"[INFO] Text length: {len(page_text)} characters")
 
         for category, patterns in active_rules.items():
-            for pattern_index, pattern in enumerate(patterns):
+            for i, pattern in enumerate(patterns):
                 print(f"[MATCH] Pattern: {pattern} | Category: {category}")
                 matches = list(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE))
                 print(f"[MATCH] Total found: {len(matches)}")
 
-                for match_index, match in enumerate(matches):
-                    matched_text = match.group().strip(" .,\n")
-                    print(f"[MATCH] #{match_index}: {matched_text}")
+                for j, match in enumerate(matches):
+                    match_text = match.group().strip(" .,\n")
+                    print(f"[MATCH] #{j}: {match_text}")
 
-                    if len(matched_text) > 300:
-                        print("[WARN] Match too long — possible greedy regex")
-
-                    if is_junk(matched_text):
-                        print(f"[SKIP] Junk: {matched_text}")
+                    # 🔍 Fix: Avoid skipping 4-digit years in date context
+                    if is_junk(match_text) and category != "date":
+                        print(f"[SKIP] Junk: {match_text}")
                         continue
 
-                    match_key = f"{matched_text}|{category}|{page_number}"
+                    match_key = f"{match_text}|{category}|{page_number}"
                     if match_key in seen_texts:
                         print("[SKIP] Duplicate match")
                         continue
 
                     seen_texts.add(match_key)
                     highlight = {
-                        "text": matched_text,
+                        "text": match_text,
                         "start": match.start(),
                         "end": match.end(),
                         "category": category,
                         "page_number": int(page_number),
-                        "match_id": f"{category}_{pattern_index}_{match_index}",
+                        "match_id": f"{category}_{i}_{j}",
                         "rule_name": pattern,
                         "source": "regex"
                     }
                     highlights.append(highlight)
-                    print(f"[OK] Highlight saved: {matched_text}")
+                    print(f"[OK] Highlight saved: {match_text}")
 
     print(f"[INFO] Total highlights collected: {len(highlights)}")
     return highlights
 
+# === WRAPPER FUNCTION ===
 def detect_highlights(book, chapter, categories=None, page=None):
     print(f"[INFO] Running detect_highlights for {book}/{chapter} - Page: {page}")
     if not isinstance(categories, list):
@@ -174,6 +166,15 @@ def detect_highlights(book, chapter, categories=None, page=None):
 
     print(f"[INFO] Returning {len(raw)} highlights")
     return raw
+
+
+
+
+
+
+
+
+
 
 
 
