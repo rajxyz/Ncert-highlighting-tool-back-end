@@ -1,3 +1,4 @@
+
 import re
 import os
 import inflect
@@ -8,30 +9,30 @@ inflector = inflect.engine()
 # ✅ REGEX RULES for each category
 RULES = {
     "definition": [
-        r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?\.',
-        r'\bDefinition:\s?.{10,150}?\.'
+        r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?.',
+        r'\bDefinition:\s?.{10,150}?.'
     ],
     "date": [
         r'\b\d{1,2}(?:st|nd|rd|th)?\s(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b',
-        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.? \d{1,2},? \d{4}\b',
+        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).? \d{1,2},? \d{4}\b',
         r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
         r'\b(?:19|20)\d{2}\b'  # ✅ Year-only pattern
     ],
     "units": [
-        r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|\u03A9|\u00B0C|\u00B0F|%)\b'
+        r'\b\d+(?:.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|\u03A9|\u00B0C|\u00B0F|%)\b'
     ],
     "capitalized_terms": [
         r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b'
     ],
     "example": [
-        r'(?:For example|e\.g\.|such as)\s.{5,100}?[.,]',
-        r'\bExample:\s.{5,150}?\.'
+        r'(?:For example|e.g.|such as)\s.{5,100}?[.,]',
+        r'\bExample:\s.{5,150}?.'
     ],
     "steps": [
-        r'\b(?:Step\s?\d+|First|Second|Then|Next|Finally|In conclusion)[,:]?\s.{5,150}?\.',
+        r'\b(?:Step\s?\d+|First|Second|Then|Next|Finally|In conclusion)[,:]?\s.{5,150}?.',
     ],
     "cause_effect": [
-        r'\b(?:Because|Due to|Since|As a result|Therefore|Thus|Hence|Consequently)\b.{5,150}?\.',
+        r'\b(?:Because|Due to|Since|As a result|Therefore|Thus|Hence|Consequently)\b.{5,150}?.',
     ],
     "theories": [
         r'\b(?:Law|Theory|Principle|Rule) of [A-Z][a-z]+(?: [A-Z][a-z]+)?\b',
@@ -41,26 +42,27 @@ RULES = {
         r'\b[A-Z]{2,6}(?:\s[A-Z]{2,6})?\b'
     ],
     "list_items": [
-        r'(?:^|\n)\s*\d{1,2}[.)-]\s.{5,150}?(?:\.|\n)',
-        r'(?:^|\n)\s*[-*\u2022]\s.{5,150}?(?:\.|\n)'
+        r'(?:^|\n)\s*\d{1,2}[.)-]\s.{5,150}?(?:.|\n)',
+        r'(?:^|\n)\s*[-\u2022]\s.{5,150}?(?:.|\n)'
     ],
     "foreign_words": [
         r'\b\w+(?:us|um|ae|es|is|on|ous|i)\b'
     ],
     "name": [
-        r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)+\b'  # e.g., Jawaharlal Nehru
+        r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)+\b'
     ],
     "place": [
-        r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b'  # Simple capitalized locations
+        r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+))\b'
     ]
 }
 
-# ✅ Allow 4-digit years even if short
+# ✅ JUNK FILTER — fixed to allow 4-digit years like 2025
 def is_junk(text):
     text = text.strip()
-    if len(text) < 5 and not (text.isdigit() and len(text) == 4):
-        return True
-    if len(text.split()) < 2 and not (text.isdigit() and len(text) == 4):
+    if text.isdigit() and len(text) == 4:
+        return False  # ✅ allow 4-digit years
+
+    if len(text) < 5 or len(text.split()) < 2:
         return True
 
     junk_phrases = {"of the", "has been", "was one", "is the", "that it", "been called", "his nearly"}
@@ -84,7 +86,7 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
     highlights = []
     seen_texts = set()
 
-    # Normalize categories and select rules
+    # Apply category filters
     if categories and isinstance(categories, list):
         normalized = [normalize_category(c) for c in categories]
         active_rules = {k: RULES[k] for k in normalized if k in RULES}
@@ -95,13 +97,12 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
         print("[INFO] No categories provided, using ALL rules")
         active_rules = RULES
 
-    # PAGE selection logic
+    # Determine pages to scan
     pages_to_scan = []
     if page:
         txt_file = f"{page}.txt"
         txt_path = os.path.join(folder_path, txt_file)
         if os.path.exists(txt_path):
-            print(f"[INFO] Scanning only page {page}")
             pages_to_scan.append((page, txt_path))
         else:
             print(f"[ERROR] Specified page {page} not found in chapter")
@@ -120,6 +121,7 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
             print(f"[ERROR] Could not list files in: {folder_path} → {e}")
             return []
 
+    # Highlight extraction
     for page_number, txt_path in pages_to_scan:
         print(f"[SCAN] Page {page_number}: {os.path.basename(txt_path)}")
         try:
@@ -128,8 +130,6 @@ def highlight_by_keywords(book, chapter, categories=None, page=None):
         except Exception as e:
             print(f"[ERROR] Could not read {txt_path}: {e}")
             continue
-
-        print(f"[INFO] Text length: {len(page_text)}")
 
         for category, patterns in active_rules.items():
             for pattern_index, pattern in enumerate(patterns):
@@ -169,4 +169,35 @@ def detect_highlights(book, chapter, categories=None, page=None):
 
     result = highlight_by_keywords(book, chapter, categories=categories, page=page)
     print(f"[INFO] Highlights returned: {len(result)}")
-    return result
+    return results
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
