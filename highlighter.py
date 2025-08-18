@@ -35,7 +35,7 @@ RULES = {
         r'\b\d{1,2}(?:st|nd|rd|th)?\s(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b',
         r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).? \d{1,2},? \d{4}\b',
         r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
-        r'\b(?:19|20)\d{2}\b'  # year-only
+        r'\b(?:19|20)\d{2}\b'
     ],
     "units": [
         r'\b\d+(?:.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|Ω|Ohm|ohm|°C|°F|%)\b'
@@ -310,3 +310,4 @@ def detect_highlights(book: str, chapter: str, categories=None, page=None, persi
         print("[WARN] persist=True requested but storage layer not available; skipping save.")
 
     return result
+
