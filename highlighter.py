@@ -1,11 +1,11 @@
-# highlighter.py
 import os
 import re
 import inflect
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────
 # Config
-# ──────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────
+
 MAX_IMAGES = 5
 DEBUG_CONTEXT_CHARS = 40  # characters of left/right context shown around a match
 
@@ -14,56 +14,55 @@ inflector = inflect.engine()
 # Try to import your storage layer (optional). If not present, we continue.
 SAVE_ENABLED = False
 try:
-    # Change this import path if your storage functions live elsewhere
     from highlight_store import save_detected_highlight  # noqa: F401
     SAVE_ENABLED = True
 except Exception:
-    print("[WARN] Storage layer not found (highlight_store.save_detected_highlight). "
-          "Highlights will not be persisted to JSON.")
+    print(
+        "[WARN] Storage layer not found (highlight_store.save_detected_highlight). "
+        "Highlights will not be persisted to JSON."
+    )
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────
 # Regex rules
-# ──────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────
+
 RULES = {
     "definition": [
-        r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?\.',
-        r'\bDefinition:\s?.{10,150}?\.'
+        r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?.',
+        r'\bDefinition:\s?.{10,150}?.'
     ],
     "date": [
         r'\b\d{1,2}(?:st|nd|rd|th)?\s(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b',
-        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.? \d{1,2},? \d{4}\b',
+        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).? \d{1,2},? \d{4}\b',
         r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
         r'\b(?:19|20)\d{2}\b'  # year-only
     ],
-    # NOTE: your frontend sends "unit", so we support that via alias mapping below.
     "units": [
-        r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|Ω|Ohm|ohm|°C|°F|%)\b'
+        r'\b\d+(?:.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|Ω|Ohm|ohm|°C|°F|%)\b'
     ],
     "capitalized_terms": [
         r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b'
     ],
     "example": [
-        r'(?:For example|e\.g\.|such as)\s.{5,100}?[\.,]',
-        r'\bExample:\s.{5,150}?\.'
+        r'(?:For example|e.g.|such as)\s.{5,100}?[.,]',
+        r'\bExample:\s.{5,150}?.'
     ],
-    # frontend may send "step" → mapped to "steps"
     "steps": [
-        r'\b(?:Step\s?\d+|First|Second|Then|Next|Finally|In conclusion)[,:]?\s.{5,150}?\.'
+        r'\b(?:Step\s?\d+|First|Second|Then|Next|Finally|In conclusion)[,:]?\s.{5,150}?.'
     ],
     "cause_effect": [
-        r'\b(?:Because|Due to|Since|As a result|Therefore|Thus|Hence|Consequently)\b.{5,150}?\.'
+        r'\b(?:Because|Due to|Since|As a result|Therefore|Thus|Hence|Consequently)\b.{5,150}?.'
     ],
     "theories": [
         r'\b(?:Law|Theory|Principle|Rule) of [A-Z][a-z]+(?: [A-Z][a-z]+)?\b',
         r"\b[A-Z][a-z]+['’]s (?:Law|Theory|Principle|Rule)\b"
     ],
-    # frontend may send "abbreviation" → mapped to "acronyms"
     "acronyms": [
         r'\b[A-Z]{2,6}(?:\s[A-Z]{2,6})?\b'
     ],
     "list_items": [
-        r'(?:^|\n)\s*\d{1,2}[.)-]\s.{5,150}?(?:\.|\n)',
-        r'(?:^|\n)\s*[-\u2022]\s.{5,150}?(?:\.|\n)'
+        r'(?:^|\n)\s*\d{1,2}[.)-]\s.{5,150}?(?:.|\n)',
+        r'(?:^|\n)\s*[-\u2022]\s.{5,150}?(?:.|\n)'
     ],
     "foreign_words": [
         r'\b\w+(?:us|um|ae|es|is|on|ous|i)\b'
@@ -74,14 +73,12 @@ RULES = {
     "place": [
         r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+))\b'
     ],
-    # Optional: if you want to explicitly support "formula" category (simple heuristic)
     "formula": [
-        r'\b[A-Za-z]\s?=\s?.{1,80}?(?:;|\.|\n)',
-        r'\b(?:F=ma|E=mc\^?2|V=IR|P=VI)\b'
+        r'\b[A-Za-z]\s?=\s?.{1,80}?(?:;|.|\n)',
+        r'\b(?:F=ma|E=mc^?2|V=IR|P=VI)\b'
     ],
 }
 
-# Map frontend categories to internal rule keys
 CATEGORY_ALIASES = {
     "definitions": "definition",
     "definition": "definition",
@@ -93,7 +90,7 @@ CATEGORY_ALIASES = {
     "examples": "example",
     "step": "steps",
     "steps": "steps",
-    "rule": "theories",          # "Rule ..." patterns live under theories
+    "rule": "theories",
     "rules": "theories",
     "theory": "theories",
     "theories": "theories",
@@ -113,56 +110,42 @@ CATEGORY_ALIASES = {
     "formulas": "formula",
 }
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────
 # Helpers
-# ──────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────
+
 def is_junk(text: str) -> bool:
-    """
-    Filter out too-short / generic fragments, but allow 4-digit years like 2025.
-    """
     t = (text or "").strip()
     if not t:
         return True
-
-    # Allow 4-digit year
     if t.isdigit() and len(t) == 4:
         return False
-
-    # Very short or single-word generic items
     if len(t) < 5 or len(t.split()) < 2:
         return True
-
-    # Pure punctuation/whitespace
     if re.fullmatch(r'[\W_]+', t):
         return True
 
-    junk_phrases = {
-        "of the", "has been", "was one", "is the", "that it", "been called", "his nearly"
-    }
+    junk_phrases = {"of the", "has been", "was one", "is the", "that it", "been called", "his nearly"}
     junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
 
     if t.lower() in junk_words or t.lower() in junk_phrases:
         return True
-
     return False
 
 
 def normalize_category(cat: str) -> str:
-    """
-    Normalize input category (singularize + alias mapping) to an internal RULES key.
-    """
     if not cat:
         return ""
     base = cat.strip().lower()
     singular = inflector.singular_noun(base) or base
-    return CATEGORY_ALIASES.get(singular, singular)
+    norm = CATEGORY_ALIASES.get(singular, singular)
+    print(f"[DEBUG] normalize_category: '{cat}' → '{norm}'")
+    return norm
 
 
 def _list_chapter_pages(folder_path: str):
-    """Return [(page_number, txt_path)] limited by MAX_IMAGES, in sorted order of images."""
     pages_to_scan = []
-    images = sorted([f for f in os.listdir(folder_path)
-                     if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+    images = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
     for idx, img in enumerate(images[:MAX_IMAGES]):
         txt_file = os.path.splitext(img)[0] + ".txt"
         txt_path = os.path.join(folder_path, txt_file)
@@ -182,23 +165,11 @@ def _context_snippet(text: str, start: int, end: int) -> str:
     return f"...{prefix} «{middle}» {suffix}..."
 
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────
 # Core: regex-based highlighter
-# ──────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────
+
 def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
-    """
-    Scan OCR text files and return a list of highlight dicts:
-    {
-        "text": "...",
-        "start": int,
-        "end": int,
-        "category": "date" | ...,
-        "page_number": int,
-        "match_id": str,
-        "rule_name": pattern,
-        "source": "regex"
-    }
-    """
     print(f"[DEBUG] Initializing highlight_by_keywords")
     print(f"[INFO] Book: {book}, Chapter: {chapter}, Page: {page}")
     print(f"[INFO] Incoming categories: {categories}")
@@ -241,7 +212,6 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
             print(f"[ERROR] Could not list files in: {folder_path} → {e}")
             return []
 
-    # Scan & collect
     highlights = []
     seen_texts = set()
 
@@ -257,10 +227,7 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
         for category, patterns in active_rules.items():
             for pattern_index, pattern in enumerate(patterns):
                 try:
-                    matches = list(re.finditer(
-                        pattern, page_text,
-                        flags=re.IGNORECASE | re.MULTILINE | re.DOTALL
-                    ))
+                    matches = list(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL))
                 except re.error as rex:
                     print(f"[ERROR] Invalid regex for {category} (pattern {pattern_index}): {rex}")
                     continue
@@ -275,7 +242,6 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
                         print(f"[SKIP] Junk text: {matched_text}")
                         continue
 
-                    # Deduplicate per (text, category, page)
                     match_key = f"{matched_text}|{category}|{page_number}"
                     if match_key in seen_texts:
                         print(f"[SKIP] Duplicate: {matched_text}")
@@ -294,35 +260,21 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
                         "source": "regex"
                     })
 
-                    # Step-by-step debug context
                     ctx = _context_snippet(page_text, start_idx, end_idx)
-                    print(f"[OK] Match: {matched_text} (Page: {page_number}, "
-                          f"idx={start_idx}-{end_idx})")
+                    print(f"[OK] Match: {matched_text} (Page: {page_number}, idx={start_idx}-{end_idx})")
                     print(f"[CTX] {ctx}")
 
     print(f"[RESULT] Total highlights: {len(highlights)}")
     return highlights
 
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────
 # Public API
-# ──────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────
+
 def detect_highlights(book: str, chapter: str, categories=None, page=None, persist: bool = False):
-    """
-    Orchestrator used by your API layer.
-
-    Args:
-        book, chapter: strings
-        categories: list[str] or single str or None
-        page: int or None
-        persist: if True and storage is available, save each highlight to JSON
-
-    Returns:
-        list[dict]: highlight dicts (see highlight_by_keywords)
-    """
     print(f"[INFO] Running detect_highlights: Book={book}, Chapter={chapter}, Page={page}")
 
-    # Normalize categories into a list
     if categories is None:
         cat_list = []
     elif isinstance(categories, list):
@@ -337,7 +289,6 @@ def detect_highlights(book: str, chapter: str, categories=None, page=None, persi
     result = highlight_by_keywords(book, chapter, categories=cat_list, page=page)
     print(f"[INFO] Highlights returned: {len(result)}")
 
-    # Optional persistence
     if persist and SAVE_ENABLED:
         for h in result:
             try:
@@ -359,29 +310,3 @@ def detect_highlights(book: str, chapter: str, categories=None, page=None, persi
         print("[WARN] persist=True requested but storage layer not available; skipping save.")
 
     return result
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
