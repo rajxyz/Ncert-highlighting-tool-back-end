@@ -48,17 +48,14 @@ def save_detected_highlight(book, chapter, text, start, end, category, page_numb
         print(f"🚫 Skipped junk highlight: '{text}'")
         return
 
-    # ✅ Ensure category is valid
-    allowed_categories = {"name", "date", "definition", "term"}  # <-- customize as per your use
-    if category not in allowed_categories:
-        print(f"⚠️ Invalid category '{category}', skipping highlight.")
-        return
+    # ✅ Normalize category
+    category = (category or "unknown").strip()
 
     entry = {
         "text": text.strip(),
         "start": int(start),
         "end": int(end),
-        "category": category.strip(),
+        "category": category,
         "page_number": int(page_number),
     }
 
@@ -135,4 +132,19 @@ def is_junk(text):
     if re.match(r'^[\W\d\s]+$', text.strip()):
         return True
     return False
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
