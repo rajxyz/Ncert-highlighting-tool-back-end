@@ -6,13 +6,24 @@ import inflect
 # ────────────────────────────────────────────────
 # Config
 # ────────────────────────────────────────────────
+
 MAX_IMAGES = 5
-DEBUG_CONTEXT_CHARS = 40  # characters of left/right context
+DEBUG_CONTEXT_CHARS = 40  # chars shown around a match
+
 inflector = inflect.engine()
 
+# Try optional storage layer
+SAVE_ENABLED = False
+try:
+    from highlight_store import save_detected_highlight  # noqa: F401
+    SAVE_ENABLED = True
+except Exception:
+    print("[WARN] Storage layer not found. Highlights will not be persisted externally.")
+
 # ────────────────────────────────────────────────
-# Regex rules
+# Regex rules for different categories
 # ────────────────────────────────────────────────
+
 RULES = {
     "definition": [
         r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?.',
@@ -28,55 +39,50 @@ RULES = {
         r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)+\b'
     ],
     "units": [
-        r'\b\d+(?:.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|Ω|Ohm|ohm|°C|°F|%)\b'
+        r'\b\d+(?:.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|Ω|°C|°F|%)\b'
     ],
     "example": [
         r'(?:For example|e.g.|such as)\s.{5,100}?[.,]',
         r'\bExample:\s.{5,150}?.'
-    ]
+    ],
+    # add more categories as needed...
 }
 
 CATEGORY_ALIASES = {
     "definitions": "definition",
     "definition": "definition",
-    "date": "date",
     "dates": "date",
-    "name": "name",
-    "names": "name",
+    "date": "date",
     "unit": "units",
     "units": "units",
+    "name": "name",
+    "names": "name",
     "example": "example",
     "examples": "example"
 }
 
-ALLOWED_CATEGORIES = set(RULES.keys())
+# ────────────────────────────────────────────────
+# Helper functions
+# ────────────────────────────────────────────────
 
-# ────────────────────────────────────────────────
-# Helpers
-# ────────────────────────────────────────────────
+def is_junk(text: str) -> bool:
+    t = (text or "").strip()
+    if not t or len(t.split()) < 2:
+        return True
+    junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
+    if t.lower() in junk_words:
+        return True
+    if any(tag in t.lower() for tag in ["<span", "<div", "class", "style"]):
+        return True
+    return False
+
 def normalize_category(cat: str) -> str:
     if not cat:
         return ""
     base = cat.strip().lower()
     singular = inflector.singular_noun(base) or base
     norm = CATEGORY_ALIASES.get(singular, singular)
-    return norm if norm in ALLOWED_CATEGORIES else ""
-
-def is_junk(text: str) -> bool:
-    t = (text or "").strip()
-    if not t or len(t) < 3:
-        return True
-    junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
-    if t.lower() in junk_words:
-        return True
-    if re.fullmatch(r'[\W\d\s]+', t):
-        return True
-    return False
-
-def _context_snippet(text: str, start: int, end: int) -> str:
-    left = max(0, start - DEBUG_CONTEXT_CHARS)
-    right = min(len(text), end + DEBUG_CONTEXT_CHARS)
-    return f"...{text[left:start]} «{text[start:end]}» {text[end:right]}..."
+    return norm
 
 def get_chapter_file_path(book, chapter):
     folder_path = os.path.join("static", "highlights", book)
@@ -89,7 +95,7 @@ def load_data(book, chapter):
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
+        except Exception:
             return []
     return []
 
@@ -98,88 +104,81 @@ def save_data(book, chapter, highlights):
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(highlights, f, indent=2, ensure_ascii=False)
 
-# ────────────────────────────────────────────────
-# Core highlight detection
-# ────────────────────────────────────────────────
-def highlight_page(book, chapter, page_number, categories=None):
-    folder_path = os.path.join("static", "books", book.strip(), chapter.strip())
-    txt_file = os.path.join(folder_path, f"{page_number}.txt")
-    if not os.path.exists(txt_file):
-        print(f"[WARN] Page {page_number} not found.")
-        return []
+def _context_snippet(text: str, start: int, end: int) -> str:
+    left = max(0, start - DEBUG_CONTEXT_CHARS)
+    right = min(len(text), end + DEBUG_CONTEXT_CHARS)
+    return f"...{text[left:start].replace(chr(10),' ')} «{text[start:end]}» {text[end:right].replace(chr(10),' ')}..."
 
-    page_text = open(txt_file, "r", encoding="utf-8").read()
-    normalized_categories = [normalize_category(c) for c in (categories or ALLOWED_CATEGORIES)]
-    normalized_categories = [c for c in normalized_categories if c]
+# ────────────────────────────────────────────────
+# Core: regex-based highlighter
+# ────────────────────────────────────────────────
+
+def highlight_page(book, chapter, page_text, page_number, categories=None):
+    """Highlight a single page and return list of highlights"""
+    active_rules = RULES
+    if categories:
+        normalized = [normalize_category(c) for c in categories]
+        active_rules = {k: RULES[k] for k in normalized if k in RULES}
 
     highlights = []
     seen_texts = set()
 
-    for category in normalized_categories:
-        for pattern in RULES[category]:
-            for match in re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL):
-                text = match.group().strip(" \n.,")
-                if is_junk(text) or text in seen_texts:
+    for category, patterns in active_rules.items():
+        for pattern_index, pattern in enumerate(patterns):
+            try:
+                matches = list(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL))
+            except re.error:
+                continue
+            for match_index, match in enumerate(matches):
+                matched_text = match.group().strip(" .,\n\t\r")
+                if is_junk(matched_text):
                     continue
-                seen_texts.add(text)
+                key = f"{matched_text}|{category}|{page_number}"
+                if key in seen_texts:
+                    continue
+                seen_texts.add(key)
+                start_idx, end_idx = match.start(), match.end()
                 highlights.append({
-                    "text": text,
-                    "start": match.start(),
-                    "end": match.end(),
+                    "text": matched_text,
+                    "start": start_idx,
+                    "end": end_idx,
                     "category": category,
-                    "page_number": page_number
+                    "page_number": page_number,
+                    "match_id": f"{category}_{pattern_index}_{match_index}",
+                    "rule_name": pattern,
+                    "source": "regex"
                 })
     return highlights
 
-# ────────────────────────────────────────────────
-# Public API
-# ────────────────────────────────────────────────
-def detect_highlights(book, chapter, categories=None, pages=None):
+def detect_highlights(book, chapter, categories=None, page_texts=None, persist=True):
     """
-    Detect highlights for given book/chapter.
-    pages: list of page numbers. If None, detect all available pages up to MAX_IMAGES.
+    Detect highlights for a chapter.
+    page_texts: dict {page_number: text}
     """
-    folder_path = os.path.join("static", "books", book.strip(), chapter.strip())
-    if not os.path.isdir(folder_path):
-        print(f"[ERROR] Chapter folder not found: {folder_path}")
-        return []
+    all_highlights = []
+    highlights_data = load_data(book, chapter)
 
-    all_pages = sorted([int(os.path.splitext(f)[0]) for f in os.listdir(folder_path)
-                        if f.lower().endswith(".txt")])
-    if pages:
-        pages_to_scan = [p for p in pages if p in all_pages]
-    else:
-        pages_to_scan = all_pages[:MAX_IMAGES]
+    pages_to_scan = page_texts or {}
+    for page_number, page_text in pages_to_scan.items():
+        page_hls = highlight_page(book, chapter, page_text, page_number, categories)
+        # Avoid duplicates
+        for hl in page_hls:
+            if hl not in highlights_data:
+                highlights_data.append(hl)
+                all_highlights.append(hl)
 
-    all_highlights = load_data(book, chapter)
-
-    for page_number in pages_to_scan:
-        page_highlights = highlight_page(book, chapter, page_number, categories)
-        # Merge with existing highlights, skip duplicates
-        for h in page_highlights:
-            if not any(existing["text"] == h["text"] and existing["category"] == h["category"]
-                       and existing["page_number"] == h["page_number"] for existing in all_highlights):
-                all_highlights.append(h)
-        save_data(book, chapter, all_highlights)
-        print(f"[INFO] Page {page_number} → {len(page_highlights)} new highlights added.")
-
+    if persist:
+        save_data(book, chapter, highlights_data)
     return all_highlights
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+def get_highlights(book, chapter, page_number=None, category=None):
+    """Fetch highlights from storage"""
+    highlights = load_data(book, chapter)
+    if page_number is not None:
+        highlights = [h for h in highlights if h["page_number"] == int(page_number)]
+    if category is not None:
+        highlights = [h for h in highlights if h["category"] == category]
+    return highlights
 
 
 
