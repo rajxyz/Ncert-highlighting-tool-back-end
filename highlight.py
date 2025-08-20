@@ -1,150 +1,184 @@
-import json
 import os
 import re
-from inflect import engine as inflect_engine
+import json
+import inflect
 
 # ────────────────────────────────────────────────
-# Inflect engine for singularization
+# Config
 # ────────────────────────────────────────────────
-inflector = inflect_engine()
+MAX_IMAGES = 5
+DEBUG_CONTEXT_CHARS = 40  # characters of left/right context
+inflector = inflect.engine()
 
 # ────────────────────────────────────────────────
-# Path builder for chapter JSON
+# Regex rules
 # ────────────────────────────────────────────────
+RULES = {
+    "definition": [
+        r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?.',
+        r'\bDefinition:\s?.{10,150}?.'
+    ],
+    "date": [
+        r'\b\d{1,2}(?:st|nd|rd|th)?\s(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b',
+        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).? \d{1,2},? \d{4}\b',
+        r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
+        r'\b(?:19|20)\d{2}\b'
+    ],
+    "name": [
+        r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)+\b'
+    ],
+    "units": [
+        r'\b\d+(?:.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|Ω|Ohm|ohm|°C|°F|%)\b'
+    ],
+    "example": [
+        r'(?:For example|e.g.|such as)\s.{5,100}?[.,]',
+        r'\bExample:\s.{5,150}?.'
+    ]
+}
+
+CATEGORY_ALIASES = {
+    "definitions": "definition",
+    "definition": "definition",
+    "date": "date",
+    "dates": "date",
+    "name": "name",
+    "names": "name",
+    "unit": "units",
+    "units": "units",
+    "example": "example",
+    "examples": "example"
+}
+
+ALLOWED_CATEGORIES = set(RULES.keys())
+
+# ────────────────────────────────────────────────
+# Helpers
+# ────────────────────────────────────────────────
+def normalize_category(cat: str) -> str:
+    if not cat:
+        return ""
+    base = cat.strip().lower()
+    singular = inflector.singular_noun(base) or base
+    norm = CATEGORY_ALIASES.get(singular, singular)
+    return norm if norm in ALLOWED_CATEGORIES else ""
+
+def is_junk(text: str) -> bool:
+    t = (text or "").strip()
+    if not t or len(t) < 3:
+        return True
+    junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}
+    if t.lower() in junk_words:
+        return True
+    if re.fullmatch(r'[\W\d\s]+', t):
+        return True
+    return False
+
+def _context_snippet(text: str, start: int, end: int) -> str:
+    left = max(0, start - DEBUG_CONTEXT_CHARS)
+    right = min(len(text), end + DEBUG_CONTEXT_CHARS)
+    return f"...{text[left:start]} «{text[start:end]}» {text[end:right]}..."
+
 def get_chapter_file_path(book, chapter):
     folder_path = os.path.join("static", "highlights", book)
     os.makedirs(folder_path, exist_ok=True)
     return os.path.join(folder_path, f"{chapter}.json")
 
-# ────────────────────────────────────────────────
-# Load existing highlights
-# ────────────────────────────────────────────────
 def load_data(book, chapter):
     path = get_chapter_file_path(book, chapter)
-    print(f"📥 Loading highlights from: {path}")
     if os.path.exists(path):
         try:
             with open(path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                print(f"✅ Loaded {len(data)} highlights.")
-                return data
-        except Exception as e:
-            print(f"❌ Error loading highlights: {e}")
+                return json.load(f)
+        except:
             return []
-    else:
-        print("⚠️ File not found, returning empty list.")
-        return []
+    return []
 
-# ────────────────────────────────────────────────
-# Save highlights list to JSON
-# ────────────────────────────────────────────────
 def save_data(book, chapter, highlights):
     path = get_chapter_file_path(book, chapter)
-    try:
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(highlights, f, indent=2, ensure_ascii=False)
-            print(f"💾 Saved {len(highlights)} highlights to {path}")
-    except Exception as e:
-        print(f"❌ Error saving highlights: {e}")
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(highlights, f, indent=2, ensure_ascii=False)
 
 # ────────────────────────────────────────────────
-# Normalize category: lowercase + singular
+# Core highlight detection
 # ────────────────────────────────────────────────
-def normalize_category(cat):
-    cat = (cat or "unknown").strip().lower()
-    singular = inflector.singular_noun(cat) or cat
-    return singular
+def highlight_page(book, chapter, page_number, categories=None):
+    folder_path = os.path.join("static", "books", book.strip(), chapter.strip())
+    txt_file = os.path.join(folder_path, f"{page_number}.txt")
+    if not os.path.exists(txt_file):
+        print(f"[WARN] Page {page_number} not found.")
+        return []
 
-# ────────────────────────────────────────────────
-# Junk detector
-# ────────────────────────────────────────────────
-def is_junk(text):
-    junk_keywords = {
-        "html", "head", "body", "div", "class", "span", "style", "script",
-        "lang", "href", "meta", "link", "content", "http", "www", "doctype"
-    }
-    t = text.strip()
-    if len(t) < 2:  # accept very short words if meaningful
-        return True
-    if any(tag in t.lower() for tag in junk_keywords):
-        return True
-    if re.match(r'^[\W\d\s]+$', t):
-        return True
-    return False
+    page_text = open(txt_file, "r", encoding="utf-8").read()
+    normalized_categories = [normalize_category(c) for c in (categories or ALLOWED_CATEGORIES)]
+    normalized_categories = [c for c in normalized_categories if c]
 
-# ────────────────────────────────────────────────
-# Save one detected highlight
-# ────────────────────────────────────────────────
-def save_detected_highlight(book, chapter, text, start, end, category, page_number, match_id=None, rule_name=None, source=None):
-    category = normalize_category(category)
-    print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
-    
-    highlights = load_data(book, chapter)
+    highlights = []
+    seen_texts = set()
 
-    # Skip junk
-    if is_junk(text):
-        print(f"🚫 Skipped junk highlight: '{text}'")
-        return
-
-    entry = {
-        "text": text.strip(),
-        "start": int(start),
-        "end": int(end),
-        "category": category,
-        "page_number": int(page_number),
-    }
-
-    if match_id: entry["match_id"] = match_id
-    if rule_name: entry["rule_name"] = rule_name
-    if source: entry["source"] = source
-
-    # Avoid duplicates
-    key = (entry["text"], entry["category"], entry["page_number"])
-    if any((h["text"], h["category"], h["page_number"]) == key for h in highlights):
-        print(f"ℹ️ Highlight already exists: '{text}'")
-        return
-
-    highlights.append(entry)
-    save_data(book, chapter, highlights)
-    print(f"✅ Highlight added: '{text}'")
-
-# ────────────────────────────────────────────────
-# Remove a highlight
-# ────────────────────────────────────────────────
-def remove_highlight(book, chapter, text, start, end, category, page_number):
-    category = normalize_category(category)
-    print(f"\n🧽 Removing highlight → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
-    
-    highlights = load_data(book, chapter)
-    new_highlights = [h for h in highlights if not (
-        h["text"] == text.strip() and
-        h["start"] == int(start) and
-        h["end"] == int(end) and
-        h["category"] == category and
-        h["page_number"] == int(page_number)
-    )]
-
-    if len(new_highlights) < len(highlights):
-        save_data(book, chapter, new_highlights)
-        print("✅ Highlight removed.")
-    else:
-        print("⚠️ Highlight not found, skipping.")
-
-# ────────────────────────────────────────────────
-# Get all highlights (optional filters)
-# ────────────────────────────────────────────────
-def get_highlights(book, chapter, page_number=None, category=None):
-    highlights = load_data(book, chapter)
-
-    if page_number is not None:
-        page_number = int(page_number)
-        highlights = [h for h in highlights if h["page_number"] == page_number]
-
-    if category is not None:
-        category = normalize_category(category)
-        highlights = [h for h in highlights if h["category"] == category]
-
+    for category in normalized_categories:
+        for pattern in RULES[category]:
+            for match in re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL):
+                text = match.group().strip(" \n.,")
+                if is_junk(text) or text in seen_texts:
+                    continue
+                seen_texts.add(text)
+                highlights.append({
+                    "text": text,
+                    "start": match.start(),
+                    "end": match.end(),
+                    "category": category,
+                    "page_number": page_number
+                })
     return highlights
+
+# ────────────────────────────────────────────────
+# Public API
+# ────────────────────────────────────────────────
+def detect_highlights(book, chapter, categories=None, pages=None):
+    """
+    Detect highlights for given book/chapter.
+    pages: list of page numbers. If None, detect all available pages up to MAX_IMAGES.
+    """
+    folder_path = os.path.join("static", "books", book.strip(), chapter.strip())
+    if not os.path.isdir(folder_path):
+        print(f"[ERROR] Chapter folder not found: {folder_path}")
+        return []
+
+    all_pages = sorted([int(os.path.splitext(f)[0]) for f in os.listdir(folder_path)
+                        if f.lower().endswith(".txt")])
+    if pages:
+        pages_to_scan = [p for p in pages if p in all_pages]
+    else:
+        pages_to_scan = all_pages[:MAX_IMAGES]
+
+    all_highlights = load_data(book, chapter)
+
+    for page_number in pages_to_scan:
+        page_highlights = highlight_page(book, chapter, page_number, categories)
+        # Merge with existing highlights, skip duplicates
+        for h in page_highlights:
+            if not any(existing["text"] == h["text"] and existing["category"] == h["category"]
+                       and existing["page_number"] == h["page_number"] for existing in all_highlights):
+                all_highlights.append(h)
+        save_data(book, chapter, all_highlights)
+        print(f"[INFO] Page {page_number} → {len(page_highlights)} new highlights added.")
+
+    return all_highlights
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
