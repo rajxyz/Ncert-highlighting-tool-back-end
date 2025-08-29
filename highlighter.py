@@ -354,13 +354,3 @@ def detect_highlights(book: str, chapter: str, categories=None, page=None, persi
 
 
 
-
-
-
-
-
-
-
-
-
-                    "
