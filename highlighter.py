@@ -28,54 +28,77 @@ except Exception:
 
 RULES = {
     "definition": [
+        # Simple definition formats
         r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?.',
         r'\bDefinition:\s?.{10,150}?.'
     ],
+
     "date": [
+        # Full date with month name
         r'\b\d{1,2}(?:st|nd|rd|th)?\s(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b',
-        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).? \d{1,2},? \d{4}\b',
+        # Abbreviated month + year
+        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s\d{4}\b',
+        # Numeric dates
         r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
-        r'\b(?:19|20)\d{2}\b'
+        # Standalone year (1500–2099)
+        r'\b(1[5-9]\d{2}|20\d{2})\b'
     ],
+
     "units": [
-        r'\b\d+(?:.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|s|ms|Hz|J|W|V|A|Ω|Ohm|ohm|°C|°F|%)\b'
+        r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|µm|nm|s|ms|h|min|Hz|kHz|MHz|J|kJ|W|kW|V|A|Ω|Ohm|ohm|°C|°F|mol|L|ml|%|N|Pa|atm)\b'
     ],
+
     "capitalized_terms": [
+        # Multi-word capitalized terms (like Indian Ocean, World Health Organization)
         r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b'
     ],
+
     "example": [
-        r'(?:For example|e.g.|such as)\s.{5,100}?[.,]',
+        r'(?:For example|e\.g\.|such as)\s.{5,120}?[.,]',
         r'\bExample:\s.{5,150}?.'
     ],
+
     "steps": [
-        r'\b(?:Step\s?\d+|First|Second|Then|Next|Finally|In conclusion)[,:]?\s.{5,150}?.'
+        r'\b(?:Step\s?\d+|First|Second|Third|Then|Next|Finally|In conclusion)[,:]?\s.{5,150}?.'
     ],
+
     "cause_effect": [
         r'\b(?:Because|Due to|Since|As a result|Therefore|Thus|Hence|Consequently)\b.{5,150}?.'
     ],
+
     "theories": [
         r'\b(?:Law|Theory|Principle|Rule) of [A-Z][a-z]+(?: [A-Z][a-z]+)?\b',
         r"\b[A-Z][a-z]+['’]s (?:Law|Theory|Principle|Rule)\b"
     ],
+
     "acronyms": [
+        # Upto 6 letters acronyms
         r'\b[A-Z]{2,6}(?:\s[A-Z]{2,6})?\b'
     ],
+
     "list_items": [
-        r'(?:^|\n)\s*\d{1,2}[.)-]\s.{5,150}?(?:.|\n)',
-        r'(?:^|\n)\s*[-\u2022]\s.{5,150}?(?:.|\n)'
+        r'(?:^|\n)\s*\d{1,2}[.)-]\s.{3,150}?(?:[.;]|\n)',
+        r'(?:^|\n)\s*[-•]\s.{3,150}?(?:[.;]|\n)'
     ],
+
     "foreign_words": [
-        r'\b\w+(?:us|um|ae|es|is|on|ous|i)\b'
+        # Common Latin/Greek suffixes used in biology/chemistry
+        r'\b\w+(?:us|um|ae|is|on|ous|oid|itis|osis|phyta|mycota|ceae|inae)\b'
     ],
+
     "name": [
-        r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)+\b'
+        # Binomial nomenclature strict: Genus (Capitalized) + species (lowercase, ≥3 letters)
+        r'\b([A-Z][a-z]{3,})\s([a-z]{3,})\b'
     ],
+
     "place": [
-        r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+))\b'
+        r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b'
     ],
+
     "formula": [
-        r'\b[A-Za-z]\s?=\s?.{1,80}?(?:;|.|\n)',
-        r'\b(?:F=ma|E=mc^?2|V=IR|P=VI)\b'
+        # Common physics/chemistry equations
+        r'\b(?:F\s*=\s*ma|E\s*=\s*mc\^?2|V\s*=\s*IR|P\s*=\s*VI|Q\s*=\s*mcΔT|pV\s*=\s*nRT)\b',
+        r'\b[A-Za-z]\s?=\s?.{1,60}?(?:;|\.|\n)'
     ],
 }
 
