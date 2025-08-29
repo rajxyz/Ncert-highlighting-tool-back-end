@@ -166,29 +166,4 @@ def is_junk(text):
 
 
 
-        highlights = [h for h in highlights if h.get("page_number") == page_number]    
-        print(f"📄 Filtered by page → {len(highlights)} items")    
-
-    if category is not None:    
-        highlights = [h for h in highlights if h.get("category") == category]    
-        print(f"🏷️ Filtered by category → {len(highlights)} items")    
-
-    # 🔍 Debug: list page numbers of all highlights
-    page_list = [h.get("page_number") for h in highlights]
-    print(f"📝 Current highlight page numbers: {page_list}")
-
-    return highlights  
-
-# 🚫 Junk detector function
-def is_junk(text):  
-    junk_keywords = {  
-        "html", "head", "body", "div", "class", "span", "style", "script",  
-        "lang", "href", "meta", "link", "content", "http", "www", "doctype"  
-    }  
-    if len(text.strip()) < 3:  
-        return True  
-    if any(tag in text.lower() for tag in junk_keywords):  
-        return True  
-    if re.match(r'^[\W\d\s]+$', text.strip()):  
-        return True  
-    return False
+        
