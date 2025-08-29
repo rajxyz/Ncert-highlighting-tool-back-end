@@ -1,334 +1,223 @@
+import json
 import os
 import re
-import inflect
 
-# ────────────────────────────────────────────────
-# Config
-# ────────────────────────────────────────────────
+# -----------------------------
+# Allowed NCERT & exam-relevant categories
+# -----------------------------
+ALLOWED_CATEGORIES = {
+    "definition": "Key definitions from text",
+    "example": "Illustrative examples mentioned in NCERT",
+    "step": "Sequential steps, experiments, or procedures",
+    "data": "Numeric or tabular info",
+    "table": "Numeric or tabular info",
+    "diagram": "Any labeled figure description",
+    "label": "Any labeled figure description",
+    "name": "Names of organisms, people, etc.",
+    "unit": "Units of measurement"
+}
 
-MAX_IMAGES = None  # Optional: None = scan all pages, otherwise set a number
-DEBUG_CONTEXT_CHARS = 40  # characters of left/right context shown around a match
-
-inflector = inflect.engine()
-
-# Try to import your storage layer (optional)
-SAVE_ENABLED = False
-try:
-    from highlight_store import save_detected_highlight  # noqa: F401
-    SAVE_ENABLED = True
-except Exception:
-    print(
-        "[WARN] Storage layer not found (highlight_store.save_detected_highlight). "
-        "Highlights will not be persisted to JSON."
-    )
-
-# ────────────────────────────────────────────────
-# Regex rules
-# ────────────────────────────────────────────────
-
+# -----------------------------
+# Regex Rules for each category
+# -----------------------------
 RULES = {
     "definition": [
-        # Simple definition formats
         r'\b(?:[A-Z][a-z]{2,}\s)?(?:is|are|was|refers to|means|is defined as|can be defined as)\b.{10,150}?.',
         r'\bDefinition:\s?.{10,150}?.'
     ],
-
-    "date": [
-        # Full date with month name
-        r'\b\d{1,2}(?:st|nd|rd|th)?\s(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b',
-        # Abbreviated month + year
-        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s\d{4}\b',
-        # Numeric dates
-        r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
-        # Standalone year (1500–2099)
-        r'\b(1[5-9]\d{2}|20\d{2})\b'
-    ],
-
-    "units": [
-        r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|µm|nm|s|ms|h|min|Hz|kHz|MHz|J|kJ|W|kW|V|A|Ω|Ohm|ohm|°C|°F|mol|L|ml|%|N|Pa|atm)\b'
-    ],
-
-    "capitalized_terms": [
-        # Multi-word capitalized terms (like Indian Ocean, World Health Organization)
-        r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b'
-    ],
-
     "example": [
         r'(?:For example|e\.g\.|such as)\s.{5,120}?[.,]',
         r'\bExample:\s.{5,150}?.'
     ],
-
-    "steps": [
-        r'\b(?:Step\s?\d+|First|Second|Third|Then|Next|Finally|In conclusion)[,:]?\s.{5,150}?.'
+    "step": [
+        r'\b(?:Step\s?\d+|First|Second|Third|Then|Next|Finally|In conclusion|Procedure)[,:]?\s.{10,150}?.'
     ],
-
-    "cause_effect": [
-        r'\b(?:Because|Due to|Since|As a result|Therefore|Thus|Hence|Consequently)\b.{5,150}?.'
+    "data": [
+        r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|µm|nm|s|ms|h|min|Hz|kHz|MHz|J|kJ|W|kW|V|A|Ω|°C|°F|mol|L|ml|%|N|Pa|atm)\b'
     ],
-
-    "theories": [
-        r'\b(?:Law|Theory|Principle|Rule) of [A-Z][a-z]+(?: [A-Z][a-z]+)?\b',
-        r"\b[A-Z][a-z]+['’]s (?:Law|Theory|Principle|Rule)\b"
+    "table": [
+        r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|µm|nm|s|ms|h|min|Hz|kHz|MHz|J|kJ|W|kW|V|A|Ω|°C|°F|mol|L|ml|%|N|Pa|atm)\b'
     ],
-
-    "acronyms": [
-        # Upto 6 letters acronyms
-        r'\b[A-Z]{2,6}(?:\s[A-Z]{2,6})?\b'
+    "diagram": [
+        r'\b(?:Fig\.|Figure|Diagram|Label|Illustration).{5,100}?'
     ],
-
-    "list_items": [
-        r'(?:^|\n)\s*\d{1,2}[.)-]\s.{3,150}?(?:[.;]|\n)',
-        r'(?:^|\n)\s*[-•]\s.{3,150}?(?:[.;]|\n)'
-    ],
-
-    "foreign_words": [
-        # Common Latin/Greek suffixes used in biology/chemistry
-        r'\b\w+(?:us|um|ae|is|on|ous|oid|itis|osis|phyta|mycota|ceae|inae)\b'
-    ],
-
     "name": [
-        # Binomial nomenclature strict: Genus (Capitalized) + species (lowercase, ≥3 letters)
         r'\b([A-Z][a-z]{3,})\s([a-z]{3,})\b'
     ],
-
-    "place": [
-        r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b'
-    ],
-
-    "formula": [
-        # Common physics/chemistry equations
-        r'\b(?:F\s*=\s*ma|E\s*=\s*mc\^?2|V\s*=\s*IR|P\s*=\s*VI|Q\s*=\s*mcΔT|pV\s*=\s*nRT)\b',
-        r'\b[A-Za-z]\s?=\s?.{1,60}?(?:;|\.|\n)'
-    ],
+    "unit": [
+        r'\b\d+(?:\.\d+)?\s?(?:kg|g|mg|cm|m|km|mm|µm|nm|s|ms|h|min|Hz|kHz|MHz|J|kJ|W|kW|V|A|Ω|°C|°F|mol|L|ml|%|N|Pa|atm)\b'
+    ]
 }
 
-CATEGORY_ALIASES = {
-    "definitions": "definition",
-    "definition": "definition",
-    "date": "date",
-    "dates": "date",
-    "unit": "units",
-    "units": "units",
-    "example": "example",
-    "examples": "example",
-    "step": "steps",
-    "steps": "steps",
-    "rule": "theories",
-    "rules": "theories",
-    "theory": "theories",
-    "theories": "theories",
-    "abbreviation": "acronyms",
-    "abbreviations": "acronyms",
-    "acronym": "acronyms",
-    "acronyms": "acronyms",
-    "list": "list_items",
-    "list_items": "list_items",
-    "name": "name",
-    "names": "name",
-    "place": "place",
-    "places": "place",
-    "capitalized_terms": "capitalized_terms",
-    "cause_effect": "cause_effect",
-    "formula": "formula",
-    "formulas": "formula",
-}
+# -----------------------------
+# Path builder for chapter
+# -----------------------------
+def get_chapter_file_path(book, chapter):
+    folder_path = os.path.join("static", "highlights", book)
+    os.makedirs(folder_path, exist_ok=True)
+    return os.path.join(folder_path, f"{chapter}.json")
 
-# ────────────────────────────────────────────────
-# Helpers
-# ────────────────────────────────────────────────
 
-def is_junk(text: str) -> bool:
-    t = (text or "").strip()
-    if not t:
+# -----------------------------
+# Load highlights
+# -----------------------------
+def load_data(book, chapter):
+    path = get_chapter_file_path(book, chapter)
+    print(f"📥 Loading highlights from: {path}")
+    if os.path.exists(path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            print(f"✅ Loaded {len(data)} highlights.")
+            return data
+        except Exception as e:
+            print(f"❌ Error loading highlights: {e}")
+            return []
+    else:
+        print("⚠️ File not found, returning empty list.")
+        return []
+
+
+# -----------------------------
+# Save highlights to file
+# -----------------------------
+def save_data(book, chapter, highlights):
+    path = get_chapter_file_path(book, chapter)
+    try:
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(highlights, f, indent=2, ensure_ascii=False)
+        print(f"💾 Saved {len(highlights)} highlights to {path}")
+    except Exception as e:
+        print(f"❌ Error saving highlights: {e}")
+
+
+# -----------------------------
+# Junk detector function
+# -----------------------------
+def is_junk(text):
+    junk_keywords = {
+        "html", "head", "body", "div", "class", "span", "style", "script",
+        "lang", "href", "meta", "link", "content", "http", "www", "doctype"
+    }
+    if len(text.strip()) < 3:
         return True
-    if t.isdigit() and len(t) == 4:
-        return False
-    if len(t) < 5 or len(t.split()) < 2:
+    if any(tag in text.lower() for tag in junk_keywords):
         return True
-    if re.fullmatch(r'[\W_]+', t):
+    if re.match(r'^[\W\d\s]+$', text.strip()):
         return True
-
-    junk_phrases = {"of the", "has been", "was one", "is the", "that it", "been called", "his nearly"}    
-    junk_words = {"and", "the", "of", "in", "on", "who", "has", "was", "one", "all", "called", "for"}    
-
-    if t.lower() in junk_words or t.lower() in junk_phrases:    
-        return True    
     return False
 
-def normalize_category(cat: str) -> str:
-    if not cat:
-        return ""
-    base = cat.strip().lower()
-    singular = inflector.singular_noun(base) or base
-    norm = CATEGORY_ALIASES.get(singular, singular)
-    print(f"[DEBUG] normalize_category: '{cat}' → '{norm}'")
-    return norm
 
-def _list_chapter_pages(folder_path: str, max_pages=None):
-    pages_to_scan = []
-    images = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+# -----------------------------
+# Save one detected highlight (with metadata)
+# -----------------------------
+def save_detected_highlight(book, chapter, text, start, end, category, page_number, match_id=None, rule_name=None, source=None):
+    print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
+    
+    # Skip junk highlights
+    if is_junk(text):
+        print(f"🚫 Skipped junk highlight: '{text}'")
+        return
+    
+    highlights = load_data(book, chapter)
 
-    if max_pages is not None:
-        images = images[:max_pages]
+    # Ensure category is one of the allowed ones
+    category = category.strip().lower() if category else "definition"
+    if category not in ALLOWED_CATEGORIES:
+        print(f"⚠️ Category '{category}' not allowed, defaulting to 'definition'")
+        category = "definition"
 
-    for idx, img in enumerate(images):
-        txt_file = os.path.splitext(img)[0] + ".txt"
-        txt_path = os.path.join(folder_path, txt_file)
-        if os.path.exists(txt_path):
-            pages_to_scan.append((idx + 1, txt_path))
-        else:
-            print(f"[WARN] Text missing for image: {img}")
-    return pages_to_scan
+    entry = {
+        "text": text.strip(),
+        "start": int(start),
+        "end": int(end),
+        "category": category,
+        "page_number": int(page_number)
+    }
+    if match_id: entry["match_id"] = match_id
+    if rule_name: entry["rule_name"] = rule_name
+    if source: entry["source"] = source
 
-def _context_snippet(text: str, start: int, end: int) -> str:
-    left = max(0, start - DEBUG_CONTEXT_CHARS)
-    right = min(len(text), end + DEBUG_CONTEXT_CHARS)
-    prefix = text[left:start].replace("\n", " ")
-    middle = text[start:end].replace("\n", " ")
-    suffix = text[end:right].replace("\n", " ")
-    return f"...{prefix} «{middle}» {suffix}..."
+    # Debug info
+    print(f"🔍 Processing highlight → '{text}' | Page: {page_number} | Start: {start}, End: {end}")
 
-# ────────────────────────────────────────────────
-# Core: regex-based highlighter
-# ────────────────────────────────────────────────
+    if entry not in highlights:
+        highlights.append(entry)
+        save_data(book, chapter, highlights)
+        print(f"✅ Highlight added: '{text}'")
+    else:
+        print(f"ℹ️ Highlight already exists: '{text}'")
 
-def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
-    print(f"[DEBUG] Initializing highlight_by_keywords")
-    print(f"[INFO] Book: {book}, Chapter: {chapter}, Page: {page}")
-    print(f"[INFO] Incoming categories: {categories}")
 
-    folder_path = os.path.join("static", "books", book.strip(), chapter.strip())    
-    if not os.path.isdir(folder_path):    
-        print(f"[ERROR] Directory not found: {folder_path}")    
-        return []    
+# -----------------------------
+# Remove a highlight
+# -----------------------------
+def remove_highlight(book, chapter, text, start, end, category, page_number):
+    print(f"\n🧽 Removing highlight → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
+    highlights = load_data(book, chapter)
 
-    # Determine which rules to apply    
-    active_rules = {}    
-    if categories and isinstance(categories, list) and len(categories) > 0:    
-        normalized = [normalize_category(c) for c in categories]    
-        active_rules = {k: RULES[k] for k in normalized if k in RULES}    
-        print(f"[DEBUG] Active rules applied: {list(active_rules.keys())}")    
-        missing = [k for k in normalized if k not in RULES]    
-        if missing:    
-            print(f"[WARN] No rules for categories: {missing}")    
-        if not active_rules:    
-            print(f"[WARN] No active rules available. Returning empty result.")    
-            return []    
-    else:    
-        print("[INFO] No categories provided, using ALL rules.")    
-        active_rules = RULES    
+    target = {
+        "text": text.strip(),
+        "start": int(start),
+        "end": int(end),
+        "category": category.strip().lower(),
+        "page_number": int(page_number)
+    }
 
-    # Determine pages to scan    
-    pages_to_scan = []    
-    if page:    
-        txt_file = f"{page}.txt"    
-        txt_path = os.path.join(folder_path, txt_file)    
-        if os.path.exists(txt_path):    
-            pages_to_scan.append((int(page), txt_path))    
-        else:    
-            print(f"[ERROR] Specified page {page} not found in chapter")    
-            return []    
-    else:    
-        try:    
-            pages_to_scan = _list_chapter_pages(folder_path, max_pages=MAX_IMAGES)    
-        except Exception as e:    
-            print(f"[ERROR] Could not list files in: {folder_path} → {e}")    
-            return []    
+    new_highlights = [h for h in highlights if not (
+        h.get("text") == target["text"] and
+        h.get("start") == target["start"] and
+        h.get("end") == target["end"] and
+        h.get("category") == target["category"] and
+        h.get("page_number") == target["page_number"]
+    )]
 
-    highlights = []    
-    seen_texts = set()    
+    if len(new_highlights) < len(highlights):
+        save_data(book, chapter, new_highlights)
+        print("✅ Highlight removed.")
+    else:
+        print("⚠️ Highlight not found, skipping.")
 
-    for page_number, txt_path in pages_to_scan:    
-        print(f"[SCAN] Page {page_number}: {os.path.basename(txt_path)}")    
-        try:    
-            with open(txt_path, "r", encoding="utf-8") as f:    
-                page_text = f.read()    
-        except Exception as e:    
-            print(f"[ERROR] Could not read {txt_path}: {e}")    
-            continue    
 
-        for category, patterns in active_rules.items():    
-            for pattern_index, pattern in enumerate(patterns):    
-                try:    
-                    matches = list(re.finditer(pattern, page_text, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL))    
-                except re.error as rex:    
-                    print(f"[ERROR] Invalid regex for {category} (pattern {pattern_index}): {rex}")    
-                    continue    
+# -----------------------------
+# Get all highlights (with optional filters)
+# -----------------------------
+def get_highlights(book, chapter, page_number=None, category=None):
+    print(f"\n📌 Fetching highlights → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
+    highlights = load_data(book, chapter)
 
-                print(f"[MATCH] {category.upper()} → Pattern {pattern_index} matched {len(matches)} time(s)")    
+    if page_number is not None:
+        page_number = int(page_number)
+        highlights = [h for h in highlights if h.get("page_number") == page_number]
+        print(f"📄 Filtered by page → {len(highlights)} items")
 
-                for match_index, match in enumerate(matches):    
-                    raw_text = match.group()    
-                    matched_text = raw_text.strip(" .,\n\t\r")    
+    if category is not None:
+        category = category.strip().lower()
+        highlights = [h for h in highlights if h.get("category") == category]
+        print(f"🏷️ Filtered by category → {len(highlights)} items")
 
-                    if is_junk(matched_text):    
-                        print(f"[SKIP] Junk text: {matched_text}")    
-                        continue    
+    # Debug: list page numbers of all highlights
+    page_list = [h.get("page_number") for h in highlights]
+    print(f"📝 Current highlight page numbers: {page_list}")
 
-                    match_key = f"{matched_text}|{category}|{page_number}"    
-                    if match_key in seen_texts:    
-                        print(f"[SKIP] Duplicate: {matched_text}")    
-                        continue    
-                    seen_texts.add(match_key)    
-
-                    start_idx, end_idx = match.start(), match.end()    
-                    highlights.append({    
-                        "text": matched_text,    
-                        "start": start_idx,    
-                        "end": end_idx,    
-                        "category": category,    
-                        "page_number": int(page_number),    
-                        "match_id": f"{category}_{pattern_index}_{match_index}",    
-                        "rule_name": pattern,    
-                        "source": "regex"    
-                    })    
-
-                    ctx = _context_snippet(page_text, start_idx, end_idx)    
-                    print(f"[OK] Match: {matched_text} (Page: {page_number}, idx={start_idx}-{end_idx})")    
-                    print(f"[CTX] {ctx}")    
-
-    print(f"[RESULT] Total highlights: {len(highlights)}")    
     return highlights
 
-# ────────────────────────────────────────────────
-# Public API
-# ────────────────────────────────────────────────
 
-def detect_highlights(book: str, chapter: str, categories=None, page=None, persist: bool = False):
-    print(f"[INFO] Running detect_highlights: Book={book}, Chapter={chapter}, Page={page}")
 
-    if categories is None:    
-        cat_list = []    
-    elif isinstance(categories, list):    
-        cat_list = categories    
-    else:    
-        cat_list = [categories]    
 
-    if not isinstance(cat_list, list):    
-        print(f"[WARN] 'categories' not a list: got {type(categories)} → coercing to list.")    
-        cat_list = [str(categories)]    
 
-    result = highlight_by_keywords(book, chapter, categories=cat_list, page=page)    
-    print(f"[INFO] Highlights returned: {len(result)}")    
 
-    if persist and SAVE_ENABLED:    
-        for h in result:    
-            try:    
-                save_detected_highlight(    
-                    book=book,    
-                    chapter=chapter,    
-                    text=h.get("text", ""),    
-                    start=h.get("start", 0),    
-                    end=h.get("end", 0),    
-                    category=h.get("category", ""),    
-                    page_number=h.get("page_number", 0),    
-                    match_id=h.get("match_id"),    
-                    rule_name=h.get("rule_name"),    
-                    source=h.get("source"),    
-                )    
-            except Exception as e:    
-                print(f"[WARN] Failed to persist highlight {h.get('match_id')}: {e}")    
-    elif persist and not SAVE_ENABLED:    
-        print("[WARN] persist=True requested but storage layer not available; skipping save.")    
 
-    return result
+
+
+
+
+
+
+
+
+
+
+
+
+            
