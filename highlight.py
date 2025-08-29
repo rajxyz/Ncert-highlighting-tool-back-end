@@ -139,8 +139,7 @@ def is_junk(text):
         return True
     if re.match(r'^[\W\d\s]+$', text.strip()):
         return True
-    return False se
-
+    return False 
 
 
 
