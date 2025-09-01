@@ -92,15 +92,13 @@ def highlight_auto():
         book = data.get('book')
         chapter = data.get('chapter')
         category = data.get('category')
-        page_number = data.get('page') or 1
-        text = data.get('text', '')
+        page = data.get('page')  # ✅ FIXED indentation
 
         if not all([book, chapter, category]):
             print("⚠️ Missing fields in highlight request")
             return jsonify({'error': 'Missing book, chapter, or category'}), 400
 
-        # 🔥 Fixed call to detect_highlights
-        matches = detect_highlights(book=book, chapter=chapter, text=text, page_number=page_number)
+        matches = detect_highlights(book, chapter, categories=[category], page=page)
         print(f"[AUTO-HIGHLIGHT] 🧠 {len(matches)} matches detected for category '{category}'")
 
         valid_count = 0
@@ -108,7 +106,7 @@ def highlight_auto():
             highlight_text = match.get('text', '').strip()
             start = match.get('start')
             end = match.get('end')
-            page_num = match.get('page_number', page_number)
+            page_number = match.get('page_number', 0)
             match_id = match.get("match_id")
             rule_name = match.get("rule_name")
             source = match.get("source", "rule")
@@ -124,8 +122,8 @@ def highlight_auto():
                 print(f"⚠️ Skipped junk/short highlight: '{highlight_text}'")
                 continue
 
-            print(f"✅ Saving highlight → '{highlight_text}' (Page: {page_num})")
-            save_detected_highlight(book, chapter, highlight_text, start, end, category, page_num, match_id, rule_name, source)
+            print(f"✅ Saving highlight → '{highlight_text}' (Page: {page_number})")
+            save_detected_highlight(book, chapter, highlight_text, start, end, category, page_number, match_id, rule_name, source)
             valid_count += 1
 
         highlights = get_highlights(book, chapter)
@@ -220,6 +218,44 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     print(f"\n🚀 Server running at http://0.0.0.0:{port}")
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
