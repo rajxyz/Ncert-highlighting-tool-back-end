@@ -2,14 +2,14 @@ import json
 import os
 import re
 
-# 🔧 Path builder for chapter
+# 🔧 Path builder for chapter  
 def get_chapter_file_path(book, chapter):
     folder_path = os.path.join("static", "highlights", book)
     os.makedirs(folder_path, exist_ok=True)
     return os.path.join(folder_path, f"{chapter}.json")
 
 
-# 📥 Load highlights
+# 📥 Load highlights  
 def load_data(book, chapter):
     path = get_chapter_file_path(book, chapter)
     print(f"📥 Loading highlights from: {path}")
@@ -27,7 +27,7 @@ def load_data(book, chapter):
         return []
 
 
-# 💾 Save highlights to file
+# 💾 Save highlights to file  
 def save_data(book, chapter, highlights):
     path = get_chapter_file_path(book, chapter)
     try:
@@ -38,18 +38,18 @@ def save_data(book, chapter, highlights):
         print(f"❌ Error saving highlights: {e}")
 
 
-# 🖍️ Save one detected highlight (with metadata)
+# 🖍️ Save one detected highlight (with metadata)  
 def save_detected_highlight(book, chapter, text, start, end, category, page_number, match_id=None, rule_name=None, source=None):
     print(f"\n🖍️ Saving highlight → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
     highlights = load_data(book, chapter)
 
-    # 🚫 Skip junk or HTML-like highlights
+    # 🚫 Skip junk or HTML-like highlights  
     if is_junk(text):
         print(f"🚫 Skipped junk highlight: '{text}'")
         return
 
-    # ✅ Ensure category is valid
-    allowed_categories = {"name", "date", "definition", "term"}  # <-- customize as per your use
+    # ✅ Restrict highlights only to "date" and "pyq"
+    allowed_categories = {"date", "pyq"}
     if category not in allowed_categories:
         print(f"⚠️ Invalid category '{category}', skipping highlight.")
         return
@@ -77,7 +77,7 @@ def save_detected_highlight(book, chapter, text, start, end, category, page_numb
         print(f"ℹ️ Highlight already exists: '{text}'")
 
 
-# 🧽 Remove a highlight
+# 🧽 Remove a highlight  
 def remove_highlight(book, chapter, text, start, end, category, page_number):
     print(f"\n🧽 Removing highlight → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
     highlights = load_data(book, chapter)
@@ -105,7 +105,7 @@ def remove_highlight(book, chapter, text, start, end, category, page_number):
         print("⚠️ Highlight not found, skipping.")
 
 
-# 📌 Get all highlights (with optional filters)
+# 📌 Get all highlights (with optional filters)  
 def get_highlights(book, chapter, page_number=None, category=None):
     print(f"\n📌 Fetching highlights → Book: {book}, Chapter: {chapter}, Page: {page_number}, Category: {category}")
     highlights = load_data(book, chapter)
@@ -122,7 +122,7 @@ def get_highlights(book, chapter, page_number=None, category=None):
     return highlights
 
 
-# 🚫 Junk detector function
+# 🚫 Junk detector function  
 def is_junk(text):
     junk_keywords = {
         "html", "head", "body", "div", "class", "span", "style", "script",
@@ -135,6 +135,10 @@ def is_junk(text):
     if re.match(r'^[\W\d\s]+$', text.strip()):
         return True
     return False
+
+
+
+
 
 
 
