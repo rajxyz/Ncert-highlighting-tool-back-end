@@ -8,17 +8,17 @@ import os
 import json
 from werkzeug.utils import secure_filename
 
-✅ Corrected name usage
 app = Flask(__name__, static_url_path='/static', static_folder='static')
 CORS(app, resources={r"/api/": {"origins": "*"}}, supports_credentials=True)
 
-🧹 Words to skip during highlight auto-detection
+# Words to skip during highlight auto-detection
 JUNK_WORDS = {
     "the", "a", "an", "in", "on", "and", "of", "at", "to", "for",
     "is", "are", "was", "by", "from", "this", "that"
 }
 
-✅ Load chapter (images + text)
+
+# Load chapter (images + text)
 @app.route('/api/load_chapter', methods=['POST'])
 def load_chapter():
     try:
@@ -27,36 +27,37 @@ def load_chapter():
         chapter = data.get('chapter')
         folder_path = os.path.join("static", "books", book, chapter)
 
-        print(f"[LOAD CHAPTER] 📘 Folder path: {folder_path}")  
+        print(f"[LOAD CHAPTER] Folder path: {folder_path}")
 
-        if not os.path.exists(folder_path):  
-            return jsonify({'error': 'Chapter folder not found'}), 404  
+        if not os.path.exists(folder_path):
+            return jsonify({'error': 'Chapter folder not found'}), 404
 
-        pages = []  
-        for file in sorted(os.listdir(folder_path)):  
-            if file.lower().endswith(('.jpg', '.jpeg', '.png')):  
-                image_url = f"/static/books/{book}/{chapter}/{file}"  
-                text_file = os.path.splitext(file)[0] + ".txt"  
-                text_path = os.path.join(folder_path, text_file)  
-                text_content = ""  
-                if os.path.exists(text_path):  
-                    with open(text_path, "r", encoding="utf-8") as f:  
-                        text_content = f.read()  
-                else:  
-                    print(f"⚠️ Missing text file for: {text_file}")  
-                pages.append({"image": image_url, "text": text_content})  
+        pages = []
+        for file in sorted(os.listdir(folder_path)):
+            if file.lower().endswith(('.jpg', '.jpeg', '.png')):
+                image_url = f"/static/books/{book}/{chapter}/{file}"
+                text_file = os.path.splitext(file)[0] + ".txt"
+                text_path = os.path.join(folder_path, text_file)
+                text_content = ""
+                if os.path.exists(text_path):
+                    with open(text_path, "r", encoding="utf-8") as f:
+                        text_content = f.read()
+                else:
+                    print(f"⚠ Missing text file for: {text_file}")
+                pages.append({"image": image_url, "text": text_content})
 
-        return jsonify({'pages': pages}), 200  
-    except Exception:  
-        print("[EXCEPTION] load_chapter:", traceback.format_exc())  
+        return jsonify({'pages': pages}), 200
+    except Exception:
+        print("[EXCEPTION] load_chapter:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
 
-✅ Get raw chapter text
+
+# Get raw chapter text
 @app.route('/api/chapter_text/<book>/<chapter>')
 def get_chapter_text(book, chapter):
     try:
         path = f"static/text/{book}/{chapter}.txt"
-        print(f"[GET CHAPTER TEXT] 📄 Path: {path}")
+        print(f"[GET CHAPTER TEXT] Path: {path}")
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
                 return jsonify({"text": f.read()}), 200
@@ -65,30 +66,32 @@ def get_chapter_text(book, chapter):
         print("[EXCEPTION] get_chapter_text:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
 
-✅ Get all highlights for chapter
+
+# Get all highlights for chapter
 @app.route('/api/chapter_highlights/<book>/<chapter>')
 def get_chapter_highlights(book, chapter):
     try:
         page_number = request.args.get('page_number')
         category = request.args.get('category')
 
-        highlights = get_highlights(book, chapter)  
-        print(f"[GET HIGHLIGHTS] 🎯 Loaded: {len(highlights)}")  
+        highlights = get_highlights(book, chapter)
+        print(f"[GET HIGHLIGHTS] Loaded: {len(highlights)}")
 
-        if page_number is not None:  
-            highlights = [h for h in highlights if str(h.get('page_number')) == str(page_number)]  
-            print(f"  ↪️ Filtered by page_number={page_number}: {len(highlights)}")  
+        if page_number is not None:
+            highlights = [h for h in highlights if str(h.get('page_number')) == str(page_number)]
+            print(f"  Filtered by page_number={page_number}: {len(highlights)}")
 
-        if category:  
-            highlights = [h for h in highlights if h.get('category') == category]  
-            print(f"  ↪️ Filtered by category='{category}': {len(highlights)}")  
+        if category:
+            highlights = [h for h in highlights if h.get('category') == category]
+            print(f"  Filtered by category='{category}': {len(highlights)}")
 
-        return jsonify({"highlights": highlights}), 200  
-    except Exception:  
-        print("[EXCEPTION] get_chapter_highlights:", traceback.format_exc())  
+        return jsonify({"highlights": highlights}), 200
+    except Exception:
+        print("[EXCEPTION] get_chapter_highlights:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
 
-✅ Auto-highlight (only date + pyq)
+
+# Auto-highlight (only date + pyq)
 @app.route('/api/highlight', methods=['POST'])
 def highlight_auto():
     try:
@@ -98,56 +101,57 @@ def highlight_auto():
         category = data.get('category')
         page = data.get('page')
 
-        if not all([book, chapter, category]):  
-            print("⚠️ Missing fields in highlight request")  
-            return jsonify({'error': 'Missing book, chapter, or category'}), 400  
+        if not all([book, chapter, category]):
+            print("⚠ Missing fields in highlight request")
+            return jsonify({'error': 'Missing book, chapter, or category'}), 400
 
-        if category not in ["date", "pyq"]:  
-            return jsonify({'message': 'Only \"date\" and \"pyq\" highlights are allowed'}), 400  
+        if category not in ["date", "pyq"]:
+            return jsonify({'message': 'Only "date" and "pyq" highlights are allowed'}), 400
 
-        matches = detect_highlights(book, chapter, categories=[category], page=page)  
-        print(f"[AUTO-HIGHLIGHT] 🧠 {len(matches)} matches detected for category '{category}'")  
+        matches = detect_highlights(book, chapter, categories=[category], page=page)
+        print(f"[AUTO-HIGHLIGHT] {len(matches)} matches detected for category '{category}'")
 
-        valid_count = 0  
-        for match in matches:  
-            highlight_text = match.get('text', '').strip()  
-            start = match.get('start')  
-            end = match.get('end')  
-            page_number = match.get('page_number', 0)  
-            match_id = match.get("match_id")  
-            rule_name = match.get("rule_name")  
-            source = match.get("source", "rule")  
+        valid_count = 0
+        for match in matches:
+            highlight_text = match.get('text', '').strip()
+            start = match.get('start')
+            end = match.get('end')
+            page_number = match.get('page_number', 0)
+            match_id = match.get("match_id")
+            rule_name = match.get("rule_name")
+            source = match.get("source", "rule")
 
-            if not highlight_text or start is None or end is None:  
-                print(f"⚠️ Skipped invalid match (missing data): {match}")  
-                continue  
+            if not highlight_text or start is None or end is None:
+                print(f"⚠ Skipped invalid match (missing data): {match}")
+                continue
 
-            if (  
-                highlight_text.lower() in JUNK_WORDS or  
-                len(highlight_text.split()) < 2  
-            ):  
-                print(f"⚠️ Skipped junk/short highlight: '{highlight_text}'")  
-                continue  
+            if (
+                highlight_text.lower() in JUNK_WORDS or
+                len(highlight_text.split()) < 2
+            ):
+                print(f"⚠ Skipped junk/short highlight: '{highlight_text}'")
+                continue
 
-            print(f"✅ Saving highlight → '{highlight_text}' (Page: {page_number})")  
-            save_detected_highlight(  
-                book, chapter, highlight_text, start, end,  
-                category, page_number, match_id, rule_name, source  
-            )  
-            valid_count += 1  
+            print(f"Saving highlight → '{highlight_text}' (Page: {page_number})")
+            save_detected_highlight(
+                book, chapter, highlight_text, start, end,
+                category, page_number, match_id, rule_name, source
+            )
+            valid_count += 1
 
-        highlights = get_highlights(book, chapter)  
-        print(f"✅ Total highlights after save: {len(highlights)}")  
+        highlights = get_highlights(book, chapter)
+        print(f"Total highlights after save: {len(highlights)}")
 
-        return jsonify({  
-            'message': f"{valid_count} valid highlight(s) saved",  
-            'highlights': highlights  
-        }), 200  
-    except Exception:  
-        print("[EXCEPTION] highlight_auto:", traceback.format_exc())  
+        return jsonify({
+            'message': f"{valid_count} valid highlight(s) saved",
+            'highlights': highlights
+        }), 200
+    except Exception:
+        print("[EXCEPTION] highlight_auto:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
 
-✅ Remove highlight
+
+# Remove highlight
 @app.route('/api/remove_highlight', methods=['POST'])
 def unhighlight_line():
     try:
@@ -160,30 +164,32 @@ def unhighlight_line():
         category = data.get('category')
         page_number = data.get('page_number') or 0
 
-        if not all([book, chapter, text, start, end, category]):  
-            return jsonify({'error': 'Missing required fields'}), 400  
+        if not all([book, chapter, text, start, end, category]):
+            return jsonify({'error': 'Missing required fields'}), 400
 
-        print(f"[REMOVE] ❌ Removing '{text}' from page {page_number}")  
-        remove_highlight(book, chapter, text, int(start), int(end), category, int(page_number))  
-        return jsonify({'message': 'Highlight removed'}), 200  
-    except Exception:  
-        print("[EXCEPTION] unhighlight_line:", traceback.format_exc())  
+        print(f"[REMOVE] Removing '{text}' from page {page_number}")
+        remove_highlight(book, chapter, text, int(start), int(end), category, int(page_number))
+        return jsonify({'message': 'Highlight removed'}), 200
+    except Exception:
+        print("[EXCEPTION] unhighlight_line:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
 
-✅ PYQ matching
+
+# PYQ matching
 @app.route('/api/pyq_match', methods=['POST'])
 def pyq_match():
     try:
         data = request.json
         chapter_text = data.get('chapter_text', "")
         matches = get_pyq_matches(chapter_text)
-        print(f"[PYQ MATCH] 📌 {len(matches)} PYQs found")
+        print(f"[PYQ MATCH] {len(matches)} PYQs found")
         return jsonify({'matches': matches}), 200
     except Exception:
         print("[EXCEPTION] pyq_match:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
 
-✅ Save all highlights manually
+
+# Save all highlights manually
 @app.route('/api/save_highlights', methods=['POST'])
 def save_all_highlights():
     try:
@@ -192,20 +198,21 @@ def save_all_highlights():
         chapter = data.get('chapter')
         highlights = data.get('highlights', [])
 
-        folder_path = os.path.join("static", "highlights", book)  
-        os.makedirs(folder_path, exist_ok=True)  
+        folder_path = os.path.join("static", "highlights", book)
+        os.makedirs(folder_path, exist_ok=True)
 
-        save_path = os.path.join(folder_path, f"{chapter}.json")  
-        with open(save_path, "w", encoding="utf-8") as f:  
-            json.dump(highlights, f, ensure_ascii=False, indent=2)  
+        save_path = os.path.join(folder_path, f"{chapter}.json")
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(highlights, f, ensure_ascii=False, indent=2)
 
-        print(f"[SAVE ALL] 💾 Saved {len(highlights)} highlights → {save_path}")  
-        return jsonify({"message": "Highlights saved successfully"}), 200  
-    except Exception:  
-        print("[EXCEPTION] save_all_highlights:", traceback.format_exc())  
+        print(f"[SAVE ALL] Saved {len(highlights)} highlights → {save_path}")
+        return jsonify({"message": "Highlights saved successfully"}), 200
+    except Exception:
+        print("[EXCEPTION] save_all_highlights:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
 
-✅ NEW: Download highlights (without saving)
+
+# Download highlights (without saving)
 @app.route('/api/download_highlights', methods=['POST'])
 def download_highlights():
     try:
@@ -226,7 +233,8 @@ def download_highlights():
         print("[EXCEPTION] download_highlights:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
 
-✅ Serve images with security
+
+# Serve images with security
 @app.route('/static/books/<book>/<chapter>/<filename>')
 def serve_static_image(book, chapter, filename):
     try:
@@ -236,7 +244,8 @@ def serve_static_image(book, chapter, filename):
         print("[EXCEPTION] serve_static_image:", traceback.format_exc())
         return "Error loading image", 500
 
-✅ Global CORS headers
+
+# Global CORS headers
 @app.after_request
 def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
@@ -244,10 +253,11 @@ def add_cors_headers(response):
     response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
     return response
 
-✅ Start server
+
+# Start server
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
-    print(f"\n🚀 Server running at http://0.0.0.0:{port}")
+    print(f"\nServer running at http://0.0.0.0:{port}")
     app.run(host="0.0.0.0", port=port, debug=True)
 
 
@@ -256,3 +266,16 @@ if __name__ == '__main__':
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+                
+    
