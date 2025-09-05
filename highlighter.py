@@ -121,8 +121,8 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
 
         # Date highlights
         for category, patterns in active_rules.items():
-            for pattern_index, pattern in enumerate(patterns):
-                for match_index, match in enumerate(re.finditer(pattern, page_text)):
+            for pattern in patterns:
+                for match in re.finditer(pattern, page_text):
                     matched_text = match.group().strip()
                     if is_junk(matched_text):
                         continue
@@ -134,14 +134,17 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
                         "text": matched_text,
                         "category": category,
                         "page_number": page_number,
-                        "source": "regex"
+                        "source": "regex",
+                        "start": match.start(),
+                        "end": match.end()
                     })
 
         # PYQ highlights
         if do_pyq:
             pyq_list = _load_pyq(book, chapter)
             for q in pyq_list:
-                if q.lower() in page_text.lower():
+                index = page_text.lower().find(q.lower())
+                if index != -1:
                     key = f"{q}|pyq|{page_number}"
                     if key in seen_texts:
                         continue
@@ -150,7 +153,9 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
                         "text": q,
                         "category": "pyq",
                         "page_number": page_number,
-                        "source": "pyq-json"
+                        "source": "pyq-json",
+                        "start": index,
+                        "end": index + len(q)
                     })
 
     return highlights
@@ -173,9 +178,22 @@ def detect_highlights(book: str, chapter: str, categories=None, page=None, persi
                     text=h["text"],
                     category=h["category"],
                     page_number=h["page_number"],
-                    source=h["source"]
+                    source=h["source"],
+                    start=h.get("start"),
+                    end=h.get("end")
                 )
             except Exception as e:
                 print(f"[WARN] Failed to persist highlight: {e}")
 
     return result
+
+
+
+
+
+
+
+
+
+
+
