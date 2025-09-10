@@ -229,3 +229,26 @@ def download_highlights():
     except Exception:
         print("[EXCEPTION] download_highlights:", traceback.format_exc())
         return jsonify({'error': 'Internal error'}), 500
+# Serve images with security
+@app.route('/static/books/<book>/<chapter>/<filename>')
+def serve_static_image(book, chapter, filename):
+    try:
+        safe_filename = secure_filename(filename)
+        return send_from_directory(f'static/books/{book}/{chapter}', safe_filename)
+    except Exception:
+        print("[EXCEPTION] serve_static_image:", traceback.format_exc())
+        return "Error loading image", 500
+
+# Global CORS headers
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
+    return response
+
+# Start server
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 10000))
+    print(f"\nServer running at http://0.0.0.0:{port}")
+    app.run(host="0.0.0.0", port=port, debug=True)
