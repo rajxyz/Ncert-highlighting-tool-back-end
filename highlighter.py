@@ -85,6 +85,7 @@ def _list_chapter_pages(folder_path: str):
         txt_path = os.path.join(folder_path, txt_file)
         if os.path.exists(txt_path):
             pages_to_scan.append((idx + 1, txt_path))
+    print(f"[DEBUG PAGE SCAN] Found pages to scan: {pages_to_scan}")
     return pages_to_scan
 
 def _context_snippet(text: str, start: int, end: int) -> str:
@@ -100,6 +101,7 @@ def _load_pyq(book: str, chapter: str):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
+        print(f"[DEBUG PYQ LOAD] Loaded {len(data.get('pyq', []))} PYQs from {file_path}")
         return data.get("pyq", [])
     except Exception as e:
         print(f"[ERROR] Failed to load PYQ JSON: {e}")
@@ -128,10 +130,12 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
 
     for page_number, txt_path in pages_to_scan:
         if not os.path.exists(txt_path):
+            print(f"[DEBUG SKIP PAGE] Text file not found: {txt_path}")
             continue
         with open(txt_path, "r", encoding="utf-8") as f:
             page_text = f.read()
 
+        # Regex matches
         for category, patterns in active_rules.items():
             for pattern in patterns:
                 for match in re.finditer(pattern, page_text):
@@ -154,11 +158,12 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
                         "end": match.end()
                     })
 
+        # PYQ matches
         if do_pyq:
             pyq_list = _load_pyq(book, chapter)
             for q in pyq_list:
                 index = page_text.lower().find(q.lower())
-                print(f"[DEBUG PYQ] Searching PYQ '{q}' in page text.")
+                print(f"[DEBUG PYQ] Searching PYQ '{q}' in page {page_number}")
                 if index != -1:
                     key = f"{q}|pyq|{page_number}"
                     if key in seen_texts:
@@ -174,7 +179,7 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
                         "end": index + len(q)
                     })
                 else:
-                    print(f"[DEBUG PYQ NOT FOUND] '{q}' not found in page.")
+                    print(f"[DEBUG PYQ NOT FOUND] '{q}' not found in page {page_number}")
 
     return highlights
 
@@ -203,7 +208,24 @@ def detect_highlights(book: str, chapter: str, categories=None, page=None, persi
             except Exception as e:
                 print(f"[WARN] Failed to persist highlight: {e}")
 
+    print(f"[DEBUG RESULT] Total highlights detected: {len(result)}")
     return result
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
