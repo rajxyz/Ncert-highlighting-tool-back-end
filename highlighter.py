@@ -7,7 +7,7 @@ import inflect
 # Config
 # ────────────────────────────────────────────────
 MAX_IMAGES = 5
-DEBUG_CONTEXT_CHARS = 40  # characters of left/right context shown around a match
+DEBUG_CONTEXT_CHARS = 40  # chars around match for context
 
 inflector = inflect.engine()
 
@@ -19,7 +19,7 @@ except Exception:
     print("[WARN] Storage layer not found. Highlights will not be persisted to JSON.")
 
 # ────────────────────────────────────────────────
-# Regex rules (ONLY DATE)
+# Regex rules
 # ────────────────────────────────────────────────
 RULES = {
     "date": [
@@ -42,14 +42,31 @@ CATEGORY_ALIASES = {
 # ────────────────────────────────────────────────
 def is_junk(text: str) -> bool:
     t = (text or "").strip()
+    junk_keywords = {
+        "html", "head", "body", "div", "class", "span", "style", "script",
+        "lang", "href", "meta", "link", "content", "http", "www", "doctype"
+    }
+
     if not t:
+        print(f"[DEBUG JUNK] Empty or blank text detected as junk.")
         return True
+
+    if any(tag in t.lower() for tag in junk_keywords):
+        print(f"[DEBUG JUNK] Text '{t}' contains junk keyword.")
+        return True
+
     if t.isdigit() and len(t) == 4:
+        print(f"[DEBUG JUNK] Text '{t}' is a valid 4-digit year. Not junk.")
         return False
-    if len(t) < 2:
+
+    if re.match(r'^[\W_]+$', t):
+        print(f"[DEBUG JUNK] Text '{t}' is non-alphanumeric junk.")
         return True
-    if re.fullmatch(r'[\W_]+', t):
+
+    if len(t) < 3:
+        print(f"[DEBUG JUNK] Text '{t}' too short, considered junk.")
         return True
+
     return False
 
 def normalize_category(cat: str) -> str:
@@ -76,7 +93,6 @@ def _context_snippet(text: str, start: int, end: int) -> str:
     return f"...{text[left:start]} «{text[start:end]}» {text[end:right]}..."
 
 def _load_pyq(book: str, chapter: str):
-    """Load PYQ list from JSON file."""
     file_path = os.path.join("static", "pyq", book.strip(), f"{chapter.strip()}.json")
     if not os.path.exists(file_path):
         print(f"[WARN] PYQ file not found: {file_path}")
@@ -99,15 +115,12 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
         return []
 
     normalized = [normalize_category(c) for c in (categories or [])]
-
-    # Only allow "date" or "pyq"
     active_rules = {k: RULES[k] for k in normalized if k in RULES}
     do_pyq = "pyq" in normalized
 
     if not active_rules and not do_pyq:
         return []
 
-    # Pages to scan
     pages_to_scan = _list_chapter_pages(folder_path) if not page else [(int(page), os.path.join(folder_path, f"{page}.txt"))]
 
     highlights = []
@@ -119,15 +132,17 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
         with open(txt_path, "r", encoding="utf-8") as f:
             page_text = f.read()
 
-        # Date highlights
         for category, patterns in active_rules.items():
             for pattern in patterns:
                 for match in re.finditer(pattern, page_text):
                     matched_text = match.group().strip()
+                    print(f"[DEBUG MATCH] Found candidate '{matched_text}' for category '{category}' on page {page_number}")
                     if is_junk(matched_text):
+                        print(f"[DEBUG SKIP JUNK] Skipping '{matched_text}'")
                         continue
                     key = f"{matched_text}|{category}|{page_number}"
                     if key in seen_texts:
+                        print(f"[DEBUG SKIP DUPLICATE] Already seen: {matched_text}")
                         continue
                     seen_texts.add(key)
                     highlights.append({
@@ -139,14 +154,15 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
                         "end": match.end()
                     })
 
-        # PYQ highlights
         if do_pyq:
             pyq_list = _load_pyq(book, chapter)
             for q in pyq_list:
                 index = page_text.lower().find(q.lower())
+                print(f"[DEBUG PYQ] Searching PYQ '{q}' in page text.")
                 if index != -1:
                     key = f"{q}|pyq|{page_number}"
                     if key in seen_texts:
+                        print(f"[DEBUG SKIP DUPLICATE PYQ] Already seen: {q}")
                         continue
                     seen_texts.add(key)
                     highlights.append({
@@ -157,6 +173,8 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
                         "start": index,
                         "end": index + len(q)
                     })
+                else:
+                    print(f"[DEBUG PYQ NOT FOUND] '{q}' not found in page.")
 
     return highlights
 
@@ -186,6 +204,20 @@ def detect_highlights(book: str, chapter: str, categories=None, page=None, persi
                 print(f"[WARN] Failed to persist highlight: {e}")
 
     return result
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
