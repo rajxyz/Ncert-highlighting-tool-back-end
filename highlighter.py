@@ -104,7 +104,7 @@ def _load_pyq(book: str, chapter: str):
         print(f"[DEBUG PYQ LOAD] Loaded {len(data.get('pyq', []))} PYQs from {file_path}")
         return data.get("pyq", [])
     except Exception as e:
-        print(f"[ERROR] Failed to load PYQ JSON: {e}")
+        print(f"[ERROR] Failed to load PYQ JSON from {file_path}: {e}")
         return []
 
 # ────────────────────────────────────────────────
@@ -121,6 +121,7 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
     do_pyq = "pyq" in normalized
 
     if not active_rules and not do_pyq:
+        print("[DEBUG] No active rules or PYQ configured for highlighting.")
         return []
 
     pages_to_scan = _list_chapter_pages(folder_path) if not page else [(int(page), os.path.join(folder_path, f"{page}.txt"))]
@@ -141,13 +142,16 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
                 for match in re.finditer(pattern, page_text):
                     matched_text = match.group().strip()
                     print(f"[DEBUG MATCH] Found candidate '{matched_text}' for category '{category}' on page {page_number}")
+
                     if is_junk(matched_text):
                         print(f"[DEBUG SKIP JUNK] Skipping '{matched_text}'")
                         continue
+
                     key = f"{matched_text}|{category}|{page_number}"
                     if key in seen_texts:
                         print(f"[DEBUG SKIP DUPLICATE] Already seen: {matched_text}")
                         continue
+
                     seen_texts.add(key)
                     highlights.append({
                         "text": matched_text,
@@ -164,11 +168,13 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
             for q in pyq_list:
                 index = page_text.lower().find(q.lower())
                 print(f"[DEBUG PYQ] Searching PYQ '{q}' in page {page_number}")
+
                 if index != -1:
                     key = f"{q}|pyq|{page_number}"
                     if key in seen_texts:
                         print(f"[DEBUG SKIP DUPLICATE PYQ] Already seen: {q}")
                         continue
+
                     seen_texts.add(key)
                     highlights.append({
                         "text": q,
@@ -181,6 +187,7 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
                 else:
                     print(f"[DEBUG PYQ NOT FOUND] '{q}' not found in page {page_number}")
 
+    print(f"[DEBUG FINAL RESULT] Highlights found: {highlights}")
     return highlights
 
 # ────────────────────────────────────────────────
@@ -189,6 +196,8 @@ def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):
 def detect_highlights(book: str, chapter: str, categories=None, page=None, persist: bool = False):
     if isinstance(categories, str):
         categories = [categories]
+
+    print(f"[DEBUG API CALL] Detect highlights called with book='{book}', chapter='{chapter}', categories={categories}, page={page}, persist={persist}")
 
     result = highlight_by_keywords(book, chapter, categories=categories, page=page)
 
@@ -205,10 +214,11 @@ def detect_highlights(book: str, chapter: str, categories=None, page=None, persi
                     start=h.get("start"),
                     end=h.get("end")
                 )
+                print(f"[DEBUG SAVE] Highlight saved: {h}")
             except Exception as e:
                 print(f"[WARN] Failed to persist highlight: {e}")
 
-    print(f"[DEBUG RESULT] Total highlights detected: {len(result)}")
+    print(f"[DEBUG API RESULT] Total highlights detected: {len(result)}")
     return result
 
 
@@ -216,6 +226,15 @@ def detect_highlights(book: str, chapter: str, categories=None, page=None, persi
 
 
 
+
+
+
+
+
+
+
+
+            
 
 
 
