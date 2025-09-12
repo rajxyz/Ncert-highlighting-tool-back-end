@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify, send_from_directory, Response  
 from flask_cors import CORS  
 from highlight import save_detected_highlight, remove_highlight, get_highlights  
-from highlighter import detect_highlights  
 from pyqs import get_pyq_matches  
+from highlighter import detect_highlights  
 import traceback  
 import os  
 import json  
@@ -126,8 +126,8 @@ def highlight_auto():
                 print(f"⚠ Skipping invalid match (missing data): {match}")  
                 continue  
   
-            # Updated junk filtering logic to allow valid 4-digit years  
-            if highlight_text.lower() in JUNK_WORDS or (len(highlight_text.split()) < 2 and not highlight_text.isdigit()):  
+            # Allow valid 4-digit numbers (years) even if short  
+            if highlight_text.lower() in JUNK_WORDS or (len(highlight_text.split()) < 2 and not (highlight_text.isdigit() and len(highlight_text) == 4)):  
                 print(f"⚠ Skipped junk/short highlight: '{highlight_text}'")  
                 continue  
   
@@ -210,7 +210,7 @@ def save_all_highlights():
     except Exception:  
         print("[EXCEPTION] save_all_highlights:", traceback.format_exc())  
         return jsonify({'error': 'Internal error'}), 500  
-  
+
 # Download highlights without saving  
 @app.route('/api/download_highlights', methods=['POST'])  
 def download_highlights():  
@@ -259,3 +259,101 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))  
     print(f"\n[SERVER START] Running at http://0.0.0.0:{port}")  
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
+
+
+
+
+
+from flask import Flask, request, jsonify, send_from_directory, Response  
+from flask_cors import CORS  
+from highlight import save_detected_highlight, remove_highlight, get_highlights  
+from highlighter import detect_highlights  
+from pyqs import get_pyq_matches  
+import traceback  
+import os  
+import json  
+from werkzeug.utils import secure_filename  
+  
+app = Flask(__name__, static_url_path='/static', static_folder='static')  
+CORS(app, resources={r"/api/": {"origins": "*"}}, supports_credentials=True)  
+  
+# Health check  
+@app.route("/health")  
+def health():  
+    return "OK", 200  
+  
+# Junk words to skip  
+JUNK_WORDS = {  
+    "the", "a", "an", "in", "on", "and", "of", "at", "to", "for",  
+    "is", "are", "was", "by", "from", "this", "that"  
+}  
+  
+# Load chapter (images + text)  
+@app.route('/api/load_chapter', methods=['POST'])  
+def load_chapter():  
+    try:  
+        data = request.json  
+        book = data.get('book')  
+        chapter = data.get('chapter')  
+        folder_path = os.path.join("static", "books", book, chapter)  
+  
+        print(f"[LOAD CHAPTER] Folder path: {folder_path}")  
+  
+        if not os.path.exists(folder_path):  
+            return jsonify({'error': 'Chapter folder not found'}), 404  
+  
+        pages = []  
+        for file in sorted(os.listdir(folder_path)):  
+            if file.lower().endswith(('.jpg', '.jpeg', '.png')):  
+                image_url = f"/static/books/{book}/{chapter}/{file}"  
+                text_file = os.path.splitext(file)[0] + ".txt"  
+                text_path = os.path.join(folder_path, text_file)  
+                text_content = ""  
+                if os.path.exists(text_path):  
+                    with open(text_path, "r", encoding="utf-8") as f:  
+                        text_content = f.read()  
+                else:  
+                    print(f"⚠ Missing text file for: {text_file}")  
+                pages.append({"image": image_url, "text": text_content})  
+  
+        return jsonify({'pages': pages}), 200  
+    except Exception:  
+        print("[EXCEPTION] load_chapter:", traceback.format_exc())  
+        return jsonify({'error': 'Internal error'}), 500  
+  
+# Get raw chapter text  
+@app.route('/api/chapter_text/<book>/<chapter>')  
+def get_chapter_text(book, chapter):  
+    try:  
+        path = f"static/text/{book}/{chapter}.txt"  
+        print(f"[GET CHAPTER TEXT] Path: {path}")  
+        if os.path.exists(path):  
+            with open(path, "r", encoding="utf-8") as f:  
+                return jsonify({"text": f.read()}), 200  
+        return jsonify({"error": "Text file not found"}), 404  
+    except Exception:  
+        print("[EXCEPTION] get_chapter_text:", traceback.format_exc())  
+        return jsonify({'error': 'Internal error'}), 500  
+  
+# Get all highlights for chapter  
+@app.route('/api/chapter_highlights/<book>/<chapter>')  
+def get_chapter_highlights(book, chapter):  
+    try:  
+        page_number = request.args.get('page_number')  
+        category = request.args.get('category')  
+  
+        highlights = get_highlights(book, chapter)  
+        print(f"[GET HIGHLIGHTS] Loaded {len(highlights)} highlights")  
+  
+        if page_number is not None:  
+            highlights = [h for h in highlights if str(h.get('page_number')) == str(page_number)]  
+            print(f"  Filtered by page_number={page_number}: {len(highlights)}")  
+  
+        if category:  
+            highlights = [h for h in highlights if h.get('category') == category]  
+            print(f"  Filtered by category='{category}': {len(highlights)}")  
+  
+        return jsonify({"highlights": highlights}), 200  
+    except Exception:  
