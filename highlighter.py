@@ -1,359 +1,231 @@
-from flask import Flask, request, jsonify, send_from_directory, Response  
-from flask_cors import CORS  
-from highlight import save_detected_highlight, remove_highlight, get_highlights  
-from pyqs import get_pyq_matches  
-from highlighter import detect_highlights  
-import traceback  
 import os  
+import re  
 import json  
-from werkzeug.utils import secure_filename  
-  
-app = Flask(__name__, static_url_path='/static', static_folder='static')  
-CORS(app, resources={r"/api/": {"origins": "*"}}, supports_credentials=True)  
-  
-# Health check  
-@app.route("/health")  
-def health():  
-    return "OK", 200  
-  
-# Junk words to skip  
-JUNK_WORDS = {  
-    "the", "a", "an", "in", "on", "and", "of", "at", "to", "for",  
-    "is", "are", "was", "by", "from", "this", "that"  
+import inflect  
+
+# ────────────────────────────────────────────────
+# Config
+# ────────────────────────────────────────────────
+MAX_IMAGES = 5  
+DEBUG_CONTEXT_CHARS = 40  # chars around match for context  
+
+inflector = inflect.engine()  
+
+SAVE_ENABLED = False  
+try:  
+    from highlight_store import save_detected_highlight  # noqa: F401  
+    SAVE_ENABLED = True  
+except Exception:  
+    print("[WARN] Storage layer not found. Highlights will not be persisted to JSON.")  
+
+# ────────────────────────────────────────────────
+# Regex rules
+# ────────────────────────────────────────────────
+RULES = {  
+    "date": [  
+        r'\b\d{1,2}(?:st|nd|rd|th)?\s(?:January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b',  
+        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).? \d{1,2},? \d{4}\b',  
+        r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',  
+        r'\b(?:19|20)\d{2}\b'  
+    ]  
 }  
-  
-# Load chapter (images + text)  
-@app.route('/api/load_chapter', methods=['POST'])  
-def load_chapter():  
-    try:  
-        data = request.json  
-        book = data.get('book')  
-        chapter = data.get('chapter')  
-        folder_path = os.path.join("static", "books", book, chapter)  
-  
-        print(f"[LOAD CHAPTER] Folder path: {folder_path}")  
-  
-        if not os.path.exists(folder_path):  
-            return jsonify({'error': 'Chapter folder not found'}), 404  
-  
-        pages = []  
-        for file in sorted(os.listdir(folder_path)):  
-            if file.lower().endswith(('.jpg', '.jpeg', '.png')):  
-                image_url = f"/static/books/{book}/{chapter}/{file}"  
-                text_file = os.path.splitext(file)[0] + ".txt"  
-                text_path = os.path.join(folder_path, text_file)  
-                text_content = ""  
-                if os.path.exists(text_path):  
-                    with open(text_path, "r", encoding="utf-8") as f:  
-                        text_content = f.read()  
-                else:  
-                    print(f"⚠ Missing text file for: {text_file}")  
-                pages.append({"image": image_url, "text": text_content})  
-  
-        return jsonify({'pages': pages}), 200  
-    except Exception:  
-        print("[EXCEPTION] load_chapter:", traceback.format_exc())  
-        return jsonify({'error': 'Internal error'}), 500  
-  
-# Get raw chapter text  
-@app.route('/api/chapter_text/<book>/<chapter>')  
-def get_chapter_text(book, chapter):  
-    try:  
-        path = f"static/text/{book}/{chapter}.txt"  
-        print(f"[GET CHAPTER TEXT] Path: {path}")  
-        if os.path.exists(path):  
-            with open(path, "r", encoding="utf-8") as f:  
-                return jsonify({"text": f.read()}), 200  
-        return jsonify({"error": "Text file not found"}), 404  
-    except Exception:  
-        print("[EXCEPTION] get_chapter_text:", traceback.format_exc())  
-        return jsonify({'error': 'Internal error'}), 500  
-  
-# Get all highlights for chapter  
-@app.route('/api/chapter_highlights/<book>/<chapter>')  
-def get_chapter_highlights(book, chapter):  
-    try:  
-        page_number = request.args.get('page_number')  
-        category = request.args.get('category')  
-  
-        highlights = get_highlights(book, chapter)  
-        print(f"[GET HIGHLIGHTS] Loaded {len(highlights)} highlights")  
-  
-        if page_number is not None:  
-            highlights = [h for h in highlights if str(h.get('page_number')) == str(page_number)]  
-            print(f"  Filtered by page_number={page_number}: {len(highlights)}")  
-  
-        if category:  
-            highlights = [h for h in highlights if h.get('category') == category]  
-            print(f"  Filtered by category='{category}': {len(highlights)}")  
-  
-        return jsonify({"highlights": highlights}), 200  
-    except Exception:  
-        print("[EXCEPTION] get_chapter_highlights:", traceback.format_exc())  
-        return jsonify({'error': 'Internal error'}), 500  
-  
-# Auto-highlight (date + pyq)  
-@app.route('/api/highlight', methods=['POST'])  
-def highlight_auto():  
-    try:  
-        data = request.json  
-        book = data.get('book')  
-        chapter = data.get('chapter')  
-        category = data.get('category')  
-        page = data.get('page')  
-  
-        if not all([book, chapter, category]):  
-            print("[WARNING] Missing book, chapter, or category")  
-            return jsonify({'error': 'Missing book, chapter, or category'}), 400  
-  
-        if category not in ["date", "pyq"]:  
-            return jsonify({'message': 'Only "date" and "pyq" categories allowed'}), 400  
-  
-        matches = detect_highlights(book, chapter, categories=[category], page=page)  
-        print(f"[AUTO-HIGHLIGHT] {len(matches)} matches detected for category '{category}'")  
-  
-        valid_count = 0  
-        for match in matches:  
-            highlight_text = match.get('text', '').strip()  
-            start = match.get('start')  
-            end = match.get('end')  
-            page_number = match.get('page_number', 0)  
-            match_id = match.get("match_id")  
-            rule_name = match.get("rule_name")  
-            source = match.get("source", "rule")  
-  
-            if not highlight_text or start is None or end is None:  
-                print(f"⚠ Skipping invalid match (missing data): {match}")  
-                continue  
-  
-            # Allow valid 4-digit numbers (years) even if short  
-            if highlight_text.lower() in JUNK_WORDS or (len(highlight_text.split()) < 2 and not (highlight_text.isdigit() and len(highlight_text) == 4)):  
-                print(f"⚠ Skipped junk/short highlight: '{highlight_text}'")  
-                continue  
-  
-            print(f"[SAVE HIGHLIGHT] '{highlight_text}' from page {page_number}")  
-            save_detected_highlight(  
-                book, chapter, highlight_text, start, end,  
-                category, page_number, match_id, rule_name, source  
-            )  
-            valid_count += 1  
-  
-        highlights = get_highlights(book, chapter)  
-        print(f"[HIGHLIGHT AUTO] Total highlights after saving: {len(highlights)}")  
-  
-        return jsonify({  
-            'message': f"{valid_count} valid highlight(s) saved",  
-            'highlights': highlights  
-        }), 200  
-    except Exception:  
-        print("[EXCEPTION] highlight_auto:", traceback.format_exc())  
-        return jsonify({'error': 'Internal error'}), 500  
-  
-# Remove highlight  
-@app.route('/api/remove_highlight', methods=['POST'])  
-def unhighlight_line():  
-    try:  
-        data = request.json  
-        book = data.get('book')  
-        chapter = data.get('chapter')  
-        text = data.get('text')  
-        start = data.get('start')  
-        end = data.get('end')  
-        category = data.get('category')  
-        page_number = data.get('page_number') or 0  
-  
-        if not all([book, chapter, text, start, end, category]):  
-            return jsonify({'error': 'Missing required fields'}), 400  
-  
-        print(f"[REMOVE HIGHLIGHT] '{text}' from page {page_number}")  
-        remove_highlight(book, chapter, text, int(start), int(end), category, int(page_number))  
-  
-        return jsonify({'message': 'Highlight removed'}), 200  
-    except Exception:  
-        print("[EXCEPTION] unhighlight_line:", traceback.format_exc())  
-        return jsonify({'error': 'Internal error'}), 500  
-  
-# PYQ matching  
-@app.route('/api/pyq_match', methods=['POST'])  
-def pyq_match():  
-    try:  
-        data = request.json  
-        chapter_text = data.get('chapter_text', "")  
-        matches = get_pyq_matches(chapter_text)  
-  
-        print(f"[PYQ MATCH] Found {len(matches)} PYQs")  
-  
-        return jsonify({'matches': matches}), 200  
-    except Exception:  
-        print("[EXCEPTION] pyq_match:", traceback.format_exc())  
-        return jsonify({'error': 'Internal error'}), 500  
-  
-# Save all highlights manually  
-@app.route('/api/save_highlights', methods=['POST'])  
-def save_all_highlights():  
-    try:  
-        data = request.json  
-        book = data.get('book')  
-        chapter = data.get('chapter')  
-        highlights = data.get('highlights', [])  
-  
-        folder_path = os.path.join("static", "highlights", book)  
-        os.makedirs(folder_path, exist_ok=True)  
-  
-        save_path = os.path.join(folder_path, f"{chapter}.json")  
-        with open(save_path, "w", encoding="utf-8") as f:  
-            json.dump(highlights, f, ensure_ascii=False, indent=2)  
-  
-        print(f"[SAVE ALL] {len(highlights)} highlights saved to {save_path}")  
-  
-        return jsonify({"message": "Highlights saved successfully"}), 200  
-    except Exception:  
-        print("[EXCEPTION] save_all_highlights:", traceback.format_exc())  
-        return jsonify({'error': 'Internal error'}), 500  
 
-# Download highlights without saving  
-@app.route('/api/download_highlights', methods=['POST'])  
-def download_highlights():  
-    try:  
-        data = request.json  
-        book = data.get('book')  
-        chapter = data.get('chapter')  
-        highlights = data.get('highlights', [])  
-  
-        filename = f"{book}_{chapter}_highlights.json"  
-  
-        response = Response(  
-            json.dumps(highlights, ensure_ascii=False, indent=2),  
-            mimetype="application/json",  
-        )  
-        response.headers["Content-Disposition"] = f"attachment; filename={filename}"  
-  
-        print(f"[DOWNLOAD HIGHLIGHTS] Prepared download for {filename}")  
-  
-        return response  
-    except Exception:  
-        print("[EXCEPTION] download_highlights:", traceback.format_exc())  
-        return jsonify({'error': 'Internal error'}), 500  
-  
-# Serve images with security  
-@app.route('/static/books/<book>/<chapter>/<filename>')  
-def serve_static_image(book, chapter, filename):  
-    try:  
-        safe_filename = secure_filename(filename)  
-        print(f"[SERVE IMAGE] Serving: {safe_filename}")  
-        return send_from_directory(f'static/books/{book}/{chapter}', safe_filename)  
-    except Exception:  
-        print("[EXCEPTION] serve_static_image:", traceback.format_exc())  
-        return "Error loading image", 500  
-  
-# Global CORS headers  
-@app.after_request  
-def add_cors_headers(response):  
-    response.headers["Access-Control-Allow-Origin"] = "*"  
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"  
-    response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"  
-    return response  
-  
-# Start server  
-if __name__ == '__main__':  
-    port = int(os.environ.get("PORT", 10000))  
-    print(f"\n[SERVER START] Running at http://0.0.0.0:{port}")  
-    app.run(host="0.0.0.0", port=port, debug=True)
-
-
-
-
-
-
-
-from flask import Flask, request, jsonify, send_from_directory, Response  
-from flask_cors import CORS  
-from highlight import save_detected_highlight, remove_highlight, get_highlights  
-from highlighter import detect_highlights  
-from pyqs import get_pyq_matches  
-import traceback  
-import os  
-import json  
-from werkzeug.utils import secure_filename  
-  
-app = Flask(__name__, static_url_path='/static', static_folder='static')  
-CORS(app, resources={r"/api/": {"origins": "*"}}, supports_credentials=True)  
-  
-# Health check  
-@app.route("/health")  
-def health():  
-    return "OK", 200  
-  
-# Junk words to skip  
-JUNK_WORDS = {  
-    "the", "a", "an", "in", "on", "and", "of", "at", "to", "for",  
-    "is", "are", "was", "by", "from", "this", "that"  
+CATEGORY_ALIASES = {  
+    "date": "date",  
+    "dates": "date",  
+    "pyq": "pyq",  
+    "pyqs": "pyq"  
 }  
-  
-# Load chapter (images + text)  
-@app.route('/api/load_chapter', methods=['POST'])  
-def load_chapter():  
+
+# ────────────────────────────────────────────────
+# Helpers
+# ────────────────────────────────────────────────
+def is_junk(text: str) -> bool:  
+    t = (text or "").strip()  
+    junk_keywords = {  
+        "html", "head", "body", "div", "class", "span", "style", "script",  
+        "lang", "href", "meta", "link", "content", "http", "www", "doctype"  
+    }  
+
+    if not t:    
+        print(f"[DEBUG JUNK] Empty or blank text detected as junk.")    
+        return True    
+
+    if any(tag in t.lower() for tag in junk_keywords):    
+        print(f"[DEBUG JUNK] Text '{t}' contains junk keyword.")    
+        return True    
+
+    if t.isdigit() and len(t) == 4:    
+        print(f"[DEBUG JUNK] Text '{t}' is a valid 4-digit year. Not junk.")    
+        return False    
+
+    if re.match(r'^[\W_]+$', t):    
+        print(f"[DEBUG JUNK] Text '{t}' is non-alphanumeric junk.")    
+        return True    
+
+    if len(t) < 3:    
+        print(f"[DEBUG JUNK] Text '{t}' too short, considered junk.")    
+        return True    
+
+    return False  
+
+def normalize_category(cat: str) -> str:  
+    if not cat:  
+        return ""  
+    base = cat.strip().lower()  
+    singular = inflector.singular_noun(base) or base  
+    norm = CATEGORY_ALIASES.get(singular, singular)  
+    return norm  
+
+def _list_chapter_pages(folder_path: str):  
+    pages_to_scan = []  
+    images = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])  
+    for idx, img in enumerate(images[:MAX_IMAGES]):  
+        txt_file = os.path.splitext(img)[0] + ".txt"  
+        txt_path = os.path.join(folder_path, txt_file)  
+        if os.path.exists(txt_path):  
+            pages_to_scan.append((idx + 1, txt_path))  
+    print(f"[DEBUG PAGE SCAN] Found pages to scan: {pages_to_scan}")  
+    return pages_to_scan  
+
+def _context_snippet(text: str, start: int, end: int) -> str:  
+    left = max(0, start - DEBUG_CONTEXT_CHARS)  
+    right = min(len(text), end + DEBUG_CONTEXT_CHARS)  
+    return f"...{text[left:start]} «{text[start:end]}» {text[end:right]}..."  
+
+def _load_pyq(book: str, chapter: str):  
+    file_path = os.path.join("static", "pyq", book.strip(), f"{chapter.strip()}.json")  
+    if not os.path.exists(file_path):  
+        print(f"[WARN] PYQ file not found: {file_path}")  
+        return []  
     try:  
-        data = request.json  
-        book = data.get('book')  
-        chapter = data.get('chapter')  
-        folder_path = os.path.join("static", "books", book, chapter)  
-  
-        print(f"[LOAD CHAPTER] Folder path: {folder_path}")  
-  
-        if not os.path.exists(folder_path):  
-            return jsonify({'error': 'Chapter folder not found'}), 404  
-  
-        pages = []  
-        for file in sorted(os.listdir(folder_path)):  
-            if file.lower().endswith(('.jpg', '.jpeg', '.png')):  
-                image_url = f"/static/books/{book}/{chapter}/{file}"  
-                text_file = os.path.splitext(file)[0] + ".txt"  
-                text_path = os.path.join(folder_path, text_file)  
-                text_content = ""  
-                if os.path.exists(text_path):  
-                    with open(text_path, "r", encoding="utf-8") as f:  
-                        text_content = f.read()  
-                else:  
-                    print(f"⚠ Missing text file for: {text_file}")  
-                pages.append({"image": image_url, "text": text_content})  
-  
-        return jsonify({'pages': pages}), 200  
-    except Exception:  
-        print("[EXCEPTION] load_chapter:", traceback.format_exc())  
-        return jsonify({'error': 'Internal error'}), 500  
-  
-# Get raw chapter text  
-@app.route('/api/chapter_text/<book>/<chapter>')  
-def get_chapter_text(book, chapter):  
-    try:  
-        path = f"static/text/{book}/{chapter}.txt"  
-        print(f"[GET CHAPTER TEXT] Path: {path}")  
-        if os.path.exists(path):  
-            with open(path, "r", encoding="utf-8") as f:  
-                return jsonify({"text": f.read()}), 200  
-        return jsonify({"error": "Text file not found"}), 404  
-    except Exception:  
-        print("[EXCEPTION] get_chapter_text:", traceback.format_exc())  
-        return jsonify({'error': 'Internal error'}), 500  
-  
-# Get all highlights for chapter  
-@app.route('/api/chapter_highlights/<book>/<chapter>')  
-def get_chapter_highlights(book, chapter):  
-    try:  
-        page_number = request.args.get('page_number')  
-        category = request.args.get('category')  
-  
-        highlights = get_highlights(book, chapter)  
-        print(f"[GET HIGHLIGHTS] Loaded {len(highlights)} highlights")  
-  
-        if page_number is not None:  
-            highlights = [h for h in highlights if str(h.get('page_number')) == str(page_number)]  
-            print(f"  Filtered by page_number={page_number}: {len(highlights)}")  
-  
-        if category:  
-            highlights = [h for h in highlights if h.get('category') == category]  
-            print(f"  Filtered by category='{category}': {len(highlights)}")  
-  
-        return jsonify({"highlights": highlights}), 200  
-    except Exception:  
+        with open(file_path, "r", encoding="utf-8") as f:  
+            data = json.load(f)  
+        print(f"[DEBUG PYQ LOAD] Loaded {len(data.get('pyq', []))} PYQs from {file_path}")  
+        return data.get("pyq", [])  
+    except Exception as e:  
+        print(f"[ERROR] Failed to load PYQ JSON from {file_path}: {e}")  
+        return []  
+
+# ────────────────────────────────────────────────
+# Core highlighter
+# ────────────────────────────────────────────────
+def highlight_by_keywords(book: str, chapter: str, categories=None, page=None):  
+    folder_path = os.path.join("static", "books", book.strip(), chapter.strip())  
+    if not os.path.isdir(folder_path):  
+        print(f"[ERROR] Directory not found: {folder_path}")  
+        return []  
+
+    normalized = [normalize_category(c) for c in (categories or [])]    
+    active_rules = {k: RULES[k] for k in normalized if k in RULES}    
+    do_pyq = "pyq" in normalized    
+
+    if not active_rules and not do_pyq:    
+        print("[DEBUG] No active rules or PYQ configured for highlighting.")    
+        return []    
+
+    pages_to_scan = _list_chapter_pages(folder_path) if not page else [(int(page), os.path.join(folder_path, f"{page}.txt"))]    
+
+    highlights = []    
+    seen_texts = set()    
+
+    for page_number, txt_path in pages_to_scan:    
+        if not os.path.exists(txt_path):    
+            print(f"[DEBUG SKIP PAGE] Text file not found: {txt_path}")    
+            continue    
+
+        with open(txt_path, "r", encoding="utf-8") as f:    
+            page_text = f.read()    
+
+        # Regex matches    
+        for category, patterns in active_rules.items():    
+            for pattern in patterns:    
+                print(f"[DEBUG PATTERN] Applying pattern: {pattern}")    
+                for match in re.finditer(pattern, page_text):    
+                    matched_text = match.group().strip()    
+                    print(f"[DEBUG MATCH] Found candidate '{matched_text}' for category '{category}' on page {page_number}")    
+
+                    if is_junk(matched_text):    
+                        print(f"[DEBUG SKIP JUNK] Skipping '{matched_text}'")    
+                        continue    
+
+                    key = f"{matched_text}|{category}|{page_number}"    
+                    if key in seen_texts:    
+                        print(f"[DEBUG SKIP DUPLICATE] Already seen: {matched_text}")    
+                        continue    
+
+                    seen_texts.add(key)    
+                    snippet = _context_snippet(page_text, match.start(), match.end())    
+                    print(f"[DEBUG SNIPPET] Context: {snippet}")    
+
+                    highlights.append({    
+                        "text": matched_text,    
+                        "category": category,    
+                        "page_number": page_number,    
+                        "source": "regex",    
+                        "start": match.start(),    
+                        "end": match.end()    
+                    })    
+
+        # PYQ matches    
+        if do_pyq:    
+            pyq_list = _load_pyq(book, chapter)    
+            for q in pyq_list:    
+                index = page_text.lower().find(q.lower())    
+                print(f"[DEBUG PYQ] Searching PYQ '{q}' in page {page_number}")    
+
+                if index != -1:    
+                    key = f"{q}|pyq|{page_number}"    
+                    if key in seen_texts:    
+                        print(f"[DEBUG SKIP DUPLICATE PYQ] Already seen: {q}")    
+                        continue    
+
+                    seen_texts.add(key)    
+                    snippet = _context_snippet(page_text, index, index + len(q))    
+                    print(f"[DEBUG SNIPPET] PYQ Context: {snippet}")    
+
+                    highlights.append({    
+                        "text": q,    
+                        "category": "pyq",    
+                        "page_number": page_number,    
+                        "source": "pyq-json",    
+                        "start": index,    
+                        "end": index + len(q)    
+                    })    
+                else:    
+                    print(f"[DEBUG PYQ NOT FOUND] '{q}' not found in page {page_number}")    
+
+    print(f"[DEBUG FINAL RESULT] Highlights found: {highlights}")    
+    return highlights  
+
+# ────────────────────────────────────────────────
+# Public API
+# ────────────────────────────────────────────────
+def detect_highlights(book: str, chapter: str, categories=None, page=None, persist: bool = False):  
+    if isinstance(categories, str):  
+        categories = [categories]  
+
+    print(f"[DEBUG API CALL] Detect highlights called with book='{book}', chapter='{chapter}', categories={categories}, page={page}, persist={persist}")    
+
+    result = highlight_by_keywords(book, chapter,
+categories=categories, page=page)
+
+if persist and SAVE_ENABLED:
+    for h in result:
+        try:
+            save_detected_highlight(
+                book=book,
+                chapter=chapter,
+                text=h["text"],
+                category=h["category"],
+                page_number=h["page_number"],
+                source=h["source"],
+                start=h.get("start"),
+                end=h.get("end")
+            )
+            print(f"[DEBUG SAVE] Highlight saved: {h}")
+        except Exception as e:
+            print(f"[WARN] Failed to persist highlight: {e}")
+
+print(f"[DEBUG API RESULT] Total highlights detected: {len(result)}")
+return result
