@@ -220,4 +220,12 @@ def detect_highlights(book: str, chapter: str, categories=None, page=None, persi
                     chapter=chapter,
                     text=h["text"],
                     category=h["category"],
-                    page_number=h["
+                    page_number=h["page_number"],
+                    source=h["source"]
+                    )
+                    print(f"[DEBUG SAVE] Highlight saved: {h}")
+                    except Exception as e:
+                    print(f"[WARN] Failed to persist highlight: {e}")
+
+                    print(f"[DEBUG API RESULT] Total highlights detected: {len(result)}")
+                    return result
